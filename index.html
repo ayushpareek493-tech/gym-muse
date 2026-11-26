@@ -6,6 +6,10 @@
 <meta name="theme-color" content="#0d0f12">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Gym Muse">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>Gym Muse</title>
 <style>
 :root{
@@ -63,6 +67,10 @@ button:disabled{opacity:.4}
 .finish{font-size:20px;font-weight:700;margin:6px 0}
 .start{width:100%;font-size:20px;min-height:64px;margin:6px 0 14px}
 .list{font-size:14px;color:var(--muted);margin:6px 0 0}
+.today{display:flex;align-items:center;gap:12px;justify-content:space-between;background:linear-gradient(135deg,#2a2408,#1f232a);border:1px solid #4a3f10;border-radius:12px;padding:12px;margin-top:10px}
+.today b{display:block;font-size:20px;color:var(--accent)}
+.today .muted{display:block;font-size:13px}
+.today button{flex:0 0 auto}
 
 /* workout */
 #workout{min-height:100vh;display:flex;flex-direction:column}
@@ -73,6 +81,7 @@ button:disabled{opacity:.4}
 .big{font-size:min(42vw,240px);font-weight:900;line-height:1;margin:18px 0 6px;font-variant-numeric:tabular-nums;letter-spacing:-.04em}
 .big.small{font-size:min(26vw,150px)}
 .w-sub{font-size:22px;color:var(--muted);min-height:1.5em;padding:0 8px}
+.w-warm{margin-top:14px;background:#11261a;border:1px solid #1f5133;color:#b9f5cf;border-radius:12px;padding:10px 14px;font-size:17px;max-width:420px}
 .state{font-size:15px;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin-top:10px}
 .log{width:100%;max-width:420px;margin-top:18px}
 .stepper{display:flex;align-items:center;gap:10px;margin:10px 0}
@@ -86,6 +95,15 @@ button:disabled{opacity:.4}
 .controls button{min-height:56px;font-weight:600}
 .controls .wide{grid-column:span 2}
 .paused-banner{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;font-size:40px;font-weight:900;pointer-events:none}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}
+.stats div{background:var(--card2);border-radius:12px;padding:10px;text-align:center}
+.stats b{display:block;font-size:22px;color:var(--accent)}
+.stats span{font-size:13px;color:var(--muted)}
+.prog-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.prog-name{flex:1;min-width:0}
+.prog-name b,.prog-name span{display:block}
+.prog-name .muted{font-size:13px}
+.up{color:var(--good);font-size:13px}.down{color:var(--bad);font-size:13px}
 .sum-person{border-top:1px solid var(--line);padding:12px 0}
 .sum-person:first-child{border-top:0}
 .sum-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
@@ -155,6 +173,11 @@ button:disabled{opacity:.4}
   <button id="startBtn" class="primary start">Start workout</button>
 
   <div class="card">
+    <h2>Progress</h2>
+    <div id="progress"></div>
+  </div>
+
+  <div class="card">
     <h2>History</h2>
     <p class="muted" id="histCount"></p>
     <div class="row">
@@ -173,6 +196,10 @@ button:disabled{opacity:.4}
     <div class="w-sub" id="wSub"></div>
     <div class="state" id="wState"></div>
 
+    <div class="w-warm" id="wWarm" hidden></div>
+    <div id="wRP" class="log" hidden>
+      <button class="primary" id="rpBreathe">Can't move it → breathe 3×</button>
+    </div>
     <div id="wReady" class="log" hidden>
       <button class="primary" id="readyGo">Start</button>
     </div>
@@ -237,17 +264,17 @@ function parseLine(raw){
   const sets = +m[1], n = +m[2], timed = !!m[3];
   if (sets < 1 || sets > 20) return { err: "Sets should be between 1 and 20" };
   if (n < 1 || n > (timed ? 600 : 100)) return { err: timed ? "Hold should be 1 to 600 seconds" : "Reps should be 1 to 100" };
-  let weight = 0, rest = null;
+  let weight = 0, rest = null, bw = false;
   for (const p of parts.slice(2)){
     const q = p.replace(/\s+/g, "").toLowerCase();
     let r;
     if (q === "") continue;
     if ((r = q.match(/^rest(\d+)(s|sec|secs)?$/))) { rest = +r[1]; continue; }
-    if (q === "bw" || q === "bodyweight") { weight = 0; continue; }
+    if (q === "bw" || q === "bodyweight") { weight = 0; bw = true; continue; }
     if ((r = q.match(/^(\d+(?:\.\d+)?)(kg|kgs)?$/))) { weight = +r[1]; continue; }
     return { err: `Couldn't read "${p}". Use a weight like 60kg, bw, or rest 90` };
   }
-  return { ex: { name, sets, reps: timed ? 0 : n, hold: timed ? n : 0, weight, rest, type: exType(name) } };
+  return { ex: { name, sets, reps: timed ? 0 : n, hold: timed ? n : 0, weight, bw, rest, type: exType(name) } };
 }
 
 function parsePlan(text){
@@ -565,7 +592,105 @@ Side Laterals Dumbbell (heavy), 1 x 9, rest 150
 Side Laterals Dumbbell (lowered), 1 x 15, rest 120
 Overhead Triceps One Hand (heavy), 1 x 9, rest 150
 Overhead Triceps One Hand (lowered), 1 x 15, rest 120
-Abs Crunches and Leg Lifts, 4 x 15, bw, rest 60`
+Abs Crunches and Leg Lifts, 4 x 15, bw, rest 60`,
+  pull1: `# PULL 1.
+# Warm up first (warm-up sets aren't counted).
+# Heavy set aims for the top of its range, lowered set (lighter) for the top of its. Hit those, go up next time.
+# Train to the last clean rep. Tap "Done early" when you can't do another. "max" sets: go to failure.
+High Row (heavy), 1 x 9, rest 150
+High Row (lowered), 1 x 15, rest 150
+High Row (rest pause), 1 x 15, rest 120
+Barbell Row Supinated (heavy), 1 x 9, rest 150
+Barbell Row Supinated (lowered), 1 x 15, rest 120
+Low Row (heavy), 1 x 9, rest 150
+Low Row (lowered), 1 x 15, rest 120
+Chin Ups, 2 x 12, bw, rest 150
+Cable Pull Over, 3 x 12, rest 150
+Reverse Butterfly (heavy), 1 x 9, rest 150
+Reverse Butterfly (lowered), 1 x 15, rest 120
+SZ Curls (heavy), 1 x 12, rest 150
+SZ Curls (lowered), 1 x 15, rest 120
+Biceps Machine (rest pause), 1 x 15, rest 120
+Barbell Shrugs (heavy), 1 x 9, rest 150
+Barbell Shrugs (lowered), 1 x 15, rest 120`,
+  legs1: `# LEGS 1.
+# Warm up first (warm-up sets aren't counted).
+# Heavy set aims for the top of its range, lowered set (lighter) for the top of its. Hit those, go up next time.
+# Train to the last clean rep. Tap "Done early" when you can't do another. "max" sets: go to failure.
+Leg Press, 2 x 12, rest 150
+V Squat (heavy), 1 x 12, rest 150
+V Squat (lowered), 1 x 18, rest 120
+Leg Extension (heavy), 1 x 9, rest 150
+Leg Extension (lowered), 1 x 15, rest 150
+Leg Extension (rest pause), 1 x 15, rest 120
+Straight Leg Deads (heavy), 1 x 9, rest 150
+Straight Leg Deads (lowered), 1 x 15, rest 120
+Leg Curl Standing, 2 x 12, rest 150
+Leg Curl Standing (rest pause), 1 x 15, rest 120
+Hip Thrust, 2 x 12, rest 150
+Adductor (heavy), 1 x 9, rest 150
+Adductor (lowered), 1 x 15, rest 120
+Abductor (heavy), 1 x 9, rest 150
+Abductor (lowered), 1 x 15, rest 120
+Standing Calf (heavy), 1 x 12, rest 150
+Standing Calf (lowered), 1 x 18, rest 150
+Standing Calf (rest pause), 1 x 20, rest 120`,
+  push2: `# PUSH 2, chest focused.
+# Warm up first (warm-up sets aren't counted).
+# Heavy set aims for the top of its range, lowered set (lighter) for the top of its. Hit those, go up next time.
+# Train to the last clean rep. Tap "Done early" when you can't do another. "max" sets: go to failure.
+Incline Dumbbell Press (heavy), 1 x 9, rest 150
+Incline Dumbbell Press (lowered), 1 x 15, rest 120
+Flat Machine (heavy), 1 x 9, rest 150
+Flat Machine (lowered), 1 x 15, rest 150
+Flat Machine (rest pause), 1 x 15, rest 120
+Chest Dips, 3 x 15, bw, rest 150
+Cable Flys Standing (heavy), 1 x 9, rest 150
+Cable Flys Standing (lowered), 1 x 15, rest 120
+Pec Dec (rest pause), 1 x 15, rest 120
+Shoulder Press Machine (heavy), 1 x 9, rest 150
+Shoulder Press Machine (lowered), 1 x 15, rest 120
+Side Laterals Machine (heavy), 1 x 9, rest 150
+Side Laterals Machine (lowered), 1 x 15, rest 120
+Crucifix Cable Lateral Triceps, 2 x 15, rest 150`,
+  pull2: `# PULL 2.
+# Warm up first (warm-up sets aren't counted).
+# Heavy set aims for the top of its range, lowered set (lighter) for the top of its. Hit those, go up next time.
+# Train to the last clean rep. Tap "Done early" when you can't do another. "max" sets: go to failure.
+Hammer Pull Down Supinated (heavy), 1 x 9, rest 150
+Hammer Pull Down Supinated (lowered), 1 x 15, rest 120
+Wide Grip Pulldown (heavy), 1 x 9, rest 150
+Wide Grip Pulldown (lowered), 1 x 15, rest 120
+T-Bar Row (heavy), 1 x 9, rest 150
+T-Bar Row (lowered), 1 x 15, rest 120
+Cable Row (heavy), 1 x 9, rest 150
+Cable Row (lowered), 1 x 15, rest 120
+Rear Delt Bent Over Laterals (heavy), 1 x 12, rest 150
+Rear Delt Bent Over Laterals (lowered), 1 x 12, rest 120
+Barbell Curls (heavy), 1 x 9, rest 150
+Barbell Curls (lowered), 1 x 15, rest 120
+Concentration Curls, 2 x 15, rest 150
+Abs Crunches and Leg Lifts, 4 x 15, bw, rest 60`,
+  legs2: `# LEGS 2.
+# Warm up first (warm-up sets aren't counted).
+# Heavy set aims for the top of its range, lowered set (lighter) for the top of its. Hit those, go up next time.
+# Train to the last clean rep. Tap "Done early" when you can't do another. "max" sets: go to failure.
+Lying Leg Curl One Legged (heavy), 1 x 9, rest 150
+Lying Leg Curl One Legged (lowered), 1 x 15, rest 120
+Smith Machine Squats (heavy), 1 x 9, rest 150
+Smith Machine Squats (lowered), 1 x 15, rest 120
+Hack Squat (rest pause), 1 x 15, rest 120
+Leg Extension, 2 x 12, rest 150
+Dumbbell Straight Leg Deads (heavy), 1 x 9, rest 150
+Dumbbell Straight Leg Deads (lowered), 1 x 15, rest 120
+Sitting Leg Curl (rest pause), 1 x 20, rest 120
+Adductor (heavy), 1 x 9, rest 150
+Adductor (lowered), 1 x 15, rest 120
+Lunges Walking, 1 x 20, bw, rest 120
+Calves Sitting (heavy), 1 x 9, rest 150
+Calves Sitting (lowered), 1 x 15, rest 120
+Donkey Calves (heavy), 1 x 9, rest 150
+Donkey Calves (lowered), 1 x 15, rest 120`
 };
 
 const S = Object.assign({
@@ -710,6 +835,32 @@ document.addEventListener("visibilitychange", () => {
 const $ = id => document.getElementById(id);
 function esc(s){ return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
 
+/* ---------- program rotation ---------- */
+const PROGRAM = [["push1", "Push 1 · shoulders"], ["pull1", "Pull 1 · back"], ["legs1", "Legs 1"], ["push2", "Push 2 · chest"], ["pull2", "Pull 2 · back"], ["legs2", "Legs 2"]];
+const dayTitle = k => (PROGRAM.find(p => p[0] === k) || [, ""])[1];
+function nextDayFor(name){
+  const ss = store.get("sessions", []).filter(s => s.person === name && PLANS[s.planKey]);
+  if (!ss.length) return PROGRAM[0][0];
+  const i = PROGRAM.findIndex(p => p[0] === ss[ss.length - 1].planKey);
+  return PROGRAM[(i + 1) % PROGRAM.length][0];
+}
+function lastSessionOf(name){ const ss = store.get("sessions", []).filter(s => s.person === name); return ss[ss.length - 1]; }
+function loadProgramDay(p, key){
+  p.plan = PLANS[key]; p.planKey = key;
+  // program days carry their own rest on each line
+  S.mode = "manual";
+  document.querySelectorAll("#modeSeg button").forEach(b => b.classList.toggle("on", b.dataset.mode === "manual"));
+  syncModeBoxes();
+}
+function todayHTML(p, i){
+  const name = personName(p, i), key = nextDayFor(name), last = lastSessionOf(name);
+  const loaded = p.planKey === key && p.plan === PLANS[key];
+  const ago = last ? Math.round((Date.now() - new Date(last.date + "T12:00").getTime()) / 864e5) : null;
+  const lastTxt = last ? `Last: ${esc(dayTitle(last.planKey) || "custom plan")}, ${ago <= 0 ? "today" : ago === 1 ? "yesterday" : ago + " days ago"}.` : "First session. The program starts at Push 1.";
+  return `<div class="today"><div><span class="muted">Next up</span><b>${esc(dayTitle(key))}</b><span class="muted">${lastTxt}</span></div>
+    ${loaded ? `<span class="muted">Loaded ✓</span>` : `<button class="primary" data-a="today">Load it</button>`}</div>`;
+}
+
 function personName(p, i){ return (p.name || "").trim() || (S.people.length > 1 ? `Person ${i + 1}` : "Me"); }
 
 function renderPeople(){
@@ -720,12 +871,16 @@ function renderPeople(){
         <input type="text" placeholder="Name" value="${esc(p.name)}" data-f="name" aria-label="Name">
         ${S.people.length > 1 ? `<button class="danger" data-a="remove" aria-label="Remove person">✕</button>` : ""}
       </div>
+      ${todayHTML(p, i)}
+      <select data-pick aria-label="Load a plan" style="margin-top:10px">
+        <option value="">📋 Load a program day…</option>
+        ${PROGRAM.map(([k, t]) => `<option value="${k}">${t}</option>`).join("")}
+      </select>
       <label>Workout plan. One exercise per line: <code>Name, 4 x 8, 60kg, rest 90</code></label>
       <textarea data-f="plan" spellcheck="false" autocapitalize="off" placeholder="Bench Press, 4 x 8, 60kg">${esc(p.plan)}</textarea>
       <ul class="errs" data-errs></ul>
       <div class="row" style="margin-top:8px">
         <button data-a="sample">Load sample plan</button>
-        <button data-a="push1">Load Push 1</button>
         <button data-a="last">Load last plan</button>
         <button data-a="csv">Upload CSV</button>
       </div>
@@ -744,12 +899,8 @@ $("people").addEventListener("click", e => {
   const card = b.closest("[data-i]"), i = +card.dataset.i, p = S.people[i];
   const a = b.dataset.a;
   if (a === "remove"){ S.people.splice(i, 1); }
-  if (a === "sample"){ p.plan = SAMPLE; }
-  if (PLANS[a]){
-    p.plan = PLANS[a];
-    // these plans carry their own rest per line
-    S.mode = "manual"; document.querySelectorAll("#modeSeg button").forEach(b => b.classList.toggle("on", b.dataset.mode === "manual")); syncModeBoxes();
-  }
+  if (a === "sample"){ p.plan = SAMPLE; p.planKey = ""; }
+  if (a === "today"){ loadProgramDay(p, nextDayFor(personName(p, i))); }
   if (a === "last"){
     const plans = store.get("plans", {});
     const t = plans[personName(p, i)] || store.get("lastPlan", "");
@@ -760,6 +911,12 @@ $("people").addEventListener("click", e => {
   fitChoice = null; saveSettings(); renderPeople(); renderPreview();
 });
 $("people").addEventListener("change", async e => {
+  if (e.target.matches("[data-pick]")){
+    const i = +e.target.closest("[data-i]").dataset.i;
+    if (PLANS[e.target.value]) loadProgramDay(S.people[i], e.target.value);
+    fitChoice = null; saveSettings(); renderPeople(); renderPreview();
+    return;
+  }
   if (!e.target.matches("[data-csv]")) return;
   const card = e.target.closest("[data-i]"), i = +card.dataset.i;
   const f = e.target.files[0]; if (!f) return;
@@ -855,7 +1012,7 @@ function renderPreview(){
       const setsTxt = setsNow !== ex.sets ? `<s>${ex.sets}</s> ${setsNow}` : ex.sets;
       const sug = suggestFor(hist, ex);
       html += `<div class="pv-ex"><b>${esc(ex.name)}</b>
-        <span class="muted">${setsTxt} sets × ${amount} · ${fmtW(ex.weight)} · ${ex.type}${restTxt ? " · " + restTxt : ""}</span>
+        <span class="muted">${setsTxt} sets × ${amount} · ${ex.weight > 0 || ex.bw ? fmtW(ex.weight) : "your weight"} · ${ex.type}${restTxt ? " · " + restTxt : ""}</span>
         ${sug ? `<div class="sug">💡 ${esc(sug.text)} ${sug.apply ? `<button data-apply="${pi}:${i}">Use it</button>` : ""}</div>` : ""}
       </div>`;
     });
@@ -912,7 +1069,7 @@ function startWorkout(){
   W.people = parsed.map((p, i) => ({
     name: p.name, exs: p.exercises, steps: g.plans[i].steps, idx: 0,
     readyAt: 0, lastEnd: null, lastRecord: null, done: false, finishedAt: 0,
-    sets: 0, volume: 0, prs: []
+    sets: 0, volume: 0, prs: [], recs: [], planKey: S.people[i].planKey || ""
   }));
   W.cur = 0; W.paused = false; W.pausedTotal = 0;
   W.startAt = now();
@@ -929,9 +1086,16 @@ function enter(state, extra = {}){
   render();
 }
 
+// "Upright Rows (rest pause)" -> "Upright Rows, rest pause set" so the voice reads it naturally
+function spokenName(name){ return name.replace(/\s*\(([^)]*)\)\s*$/, (_, t) => `, ${t} set`); }
+function weightText(p, ex){
+  const w = prefillWeight(p, ex);
+  return w > 0 ? fmtW(w) : ex.bw ? "bodyweight" : "";
+}
 function nextInfo(p){
   const st = p.steps[p.idx], ex = p.exs[st.ex];
-  return `${ex.name}, set ${st.set} of ${st.sets}, ${ex.weight > 0 ? fmtW(ex.weight).replace("kg", "kilos") : "bodyweight"}`;
+  const w = weightText(p, ex);
+  return `${spokenName(ex.name)}${st.sets > 1 ? `, set ${st.set} of ${st.sets}` : ""}${w ? ", " + w.replace("kg", "kilos") : ""}`;
 }
 
 function startCountdown(lead = 0){ enter("COUNTDOWN", { lead }); }
@@ -942,7 +1106,40 @@ function startSet(){
     p.lastRecord.restTaken = Math.round((now() - p.lastEnd) / 1000);
     persistRecord(p.lastRecord);
   }
-  enter("SET", { said: 0, holdSaid: {} });
+  enter("SET", { said: 0, holdSaid: {}, rp: null, repBase: 0, rounds: 0 });
+  W.repT0 = W.t0;
+}
+
+const isRestPause = ex => /rest\s*pause/i.test(ex.name);
+const roundPlate = x => Math.max(2.5, Math.round(x / 2.5) * 2.5);
+function lastWeightFor(p, ex){
+  const prev = personHistory(p.name).filter(r => r.exercise.toLowerCase() === ex.name.toLowerCase() && r.weight > 0);
+  return prev.length ? prev[prev.length - 1].weight : 0;
+}
+/* Weight to prefill in the log: plan weight, else last time, else today's
+   heavy set of the same exercise (lowered = ~80%, rest pause = same as lowered). */
+function prefillWeight(p, ex){
+  if (ex.weight) return ex.weight;
+  const last = lastWeightFor(p, ex);
+  if (last) return last;
+  const today = p.recs.filter(r => baseName(r.exercise) === baseName(ex.name) && r.weight > 0);
+  if (!today.length) return 0;
+  const prev = today[today.length - 1];
+  return /\(lowered\)/i.test(ex.name) && /\(heavy\)/i.test(prev.exercise) ? roundPlate(prev.weight * 0.8) : prev.weight;
+}
+function warmupFor(p){
+  const st = p.steps[p.idx]; if (!st || st.set !== 1) return "";
+  const ex = p.exs[st.ex];
+  if (ex.bw || ex.hold || /\((lowered|rest pause)\)/i.test(ex.name)) return "";
+  // only before the first exercise on a station
+  const prevStep = p.steps[p.idx - 1];
+  if (prevStep && baseName(p.exs[prevStep.ex].name) === baseName(ex.name)) return "";
+  const w = ex.weight || lastWeightFor(p, ex);
+  if (!w) return "Warm up first: 1–2 light sets, don't tire yourself out.";
+  if (w < 10) return `Warm-up: 1 light set × 10`;
+  return ex.type === "compound"
+    ? `Warm-up: ${roundPlate(w * 0.5)} kg × 8 · ${roundPlate(w * 0.7)} kg × 4 · ${roundPlate(w * 0.85)} kg × 2`
+    : `Warm-up: ${roundPlate(w * 0.6)} kg × 10`;
 }
 
 function finishSet(done){
@@ -951,13 +1148,7 @@ function finishSet(done){
   p.lastEnd = now();
   if (ex.hold) done = done != null ? done : Math.min(ex.hold, Math.round(elapsed / 1000));
   speak(line("setDone"));
-  // No weight in the plan? Start from what this person used last time on this exercise.
-  let w = ex.weight;
-  if (!w){
-    const prev = personHistory(p.name).filter(r => r.exercise.toLowerCase() === ex.name.toLowerCase() && r.weight > 0);
-    if (prev.length) w = prev[prev.length - 1].weight;
-  }
-  enter("LOG", { logReps: done, logWeight: w });
+  enter("LOG", { logReps: done, logWeight: prefillWeight(p, ex) });
 }
 
 function saveLog(){
@@ -971,7 +1162,7 @@ function saveLog(){
   const pr = isPR(hist, ex.name, rec.weight, rec.repsDone);
   rec._id = Date.now() + Math.random();
   const all = history(); (all[p.name] = all[p.name] || []).push(rec); store.set("history", all);
-  p.lastRecord = rec;
+  p.lastRecord = rec; p.recs.push(rec);
   p.sets++; p.volume += rec.weight * (ex.hold ? 0 : rec.repsDone);
   if (pr){ p.prs.push(`${ex.name} ${fmtW(rec.weight)} x ${rec.repsDone}`); }
   p.readyAt = p.lastEnd + st.restAfter * 1000;
@@ -1020,10 +1211,17 @@ function nextTurn(prefix){
 }
 
 function finishWorkout(){
+  if (W.state === "DONE") return;
   enter("DONE");
-  speechSynthesis && speak(line("sessionDone"));
+  speak(line("sessionDone"));
   releaseWake(); musicPause();
   const end = now();
+  const sessions = store.get("sessions", []);
+  W.people.filter(p => p.sets > 0).forEach(p => sessions.push({
+    date: W.session, person: p.name, planKey: p.planKey, sets: p.sets,
+    volume: Math.round(p.volume), secs: Math.round(((p.finishedAt || end) - W.startAt) / 1000)
+  }));
+  store.set("sessions", sessions);
   $("summary").innerHTML = W.people.map(p => `
     <div class="sum-person">
       <h2>${esc(p.name)}</h2>
@@ -1071,9 +1269,31 @@ function tick(){
       return;
     }
     const N = ex.reps, tempoMs = S.tempo * 1000;
-    const due = Math.min(N, Math.floor(el / tempoMs));
-    while (W.said < due){ W.said++; sayRep(W.said, N); }
-    if (el >= N * tempoMs + Math.min(1500, tempoMs * 0.6)) return finishSet(N);
+    if (W.rp === "breathe"){
+      // rest-pause: keep the weight, 3 deep breaths, go again
+      const b = now() - W.rpT0;
+      if (!f.br0){ f.br0 = 1; speak("Keep the weight. Breathe in, and out. One."); }
+      if (b >= 4500 && !f.br1){ f.br1 = 1; speak("Two."); }
+      if (b >= 8000 && !f.br2){ f.br2 = 1; speak("Three."); }
+      if (b >= 11000){
+        beep(1320, 0.25); speak("Go again!");
+        W.rp = "again"; W.rounds++; W.repBase = W.said; W.repT0 = now();
+        f.br0 = f.br1 = f.br2 = 0;
+      }
+      render();
+      return;
+    }
+    const cap = W.rp === "again" ? Infinity : N;
+    const due = Math.min(cap, W.repBase + Math.floor((now() - W.repT0) / tempoMs));
+    while (W.said < due){
+      W.said++;
+      if (W.rp === "again") speak(Math.random() < 0.3 ? `${shortLine("rep", 2)} ${W.said}` : String(W.said));
+      else sayRep(W.said, N);
+    }
+    if (W.rp !== "again" && now() - W.repT0 >= N * tempoMs + Math.min(1500, tempoMs * 0.6)){
+      if (isRestPause(ex)) return startBreathe();
+      return finishSet(N);
+    }
     render();
     return;
   }
@@ -1096,6 +1316,13 @@ function tick(){
   }
 }
 
+function startBreathe(){
+  if (W.state !== "SET") return;
+  W.rp = "breathe"; W.rpT0 = now();
+  W.flags.br0 = W.flags.br1 = W.flags.br2 = 0;
+  render();
+}
+
 function sayRep(k, N){
   const maxWords = Math.max(2, Math.floor(S.tempo * 1.6));
   let t;
@@ -1116,7 +1343,8 @@ function render(){
   $("wWho").textContent = p.name;
   $("wWho").hidden = !multi && p.name === "Me";
   $("wEx").textContent = ex.name;
-  $("wMeta").textContent = `Set ${st.set} of ${st.sets} · ${fmtW(ex.weight)}${ex.hold ? ` · ${ex.hold} s hold` : ` · ${ex.reps} reps`}`;
+  const wt = weightText(p, ex) || "pick your weight";
+  $("wMeta").textContent = `${st.sets > 1 ? `Set ${st.set} of ${st.sets} · ` : ""}${wt}${ex.hold ? ` · ${ex.hold} s hold` : ` · ${ex.reps} reps`}`;
   const big = $("wBig"), sub = $("wSub"), stt = $("wState");
   big.classList.remove("small");
   $("wReady").hidden = W.state !== "READY";
@@ -1124,6 +1352,10 @@ function render(){
   $("cSkip").disabled = W.state !== "REST";
   $("cPlus").disabled = W.state !== "REST";
   $("cEarly").disabled = W.state !== "SET";
+  $("cEarly").textContent = W.state === "SET" && W.rp ? "Finished" : "Done early";
+  $("wRP").hidden = !(W.state === "SET" && isRestPause(ex) && W.rp !== "breathe");
+  const warm = (W.state === "READY" || W.state === "REST") ? warmupFor(p) : "";
+  $("wWarm").textContent = warm; $("wWarm").hidden = !warm;
   const el = now() - W.t0;
 
   if (W.state === "READY"){
@@ -1141,8 +1373,14 @@ function render(){
       big.textContent = W.said || "GO";
       if (!W.said) big.classList.add("small");
       const left = ex.reps - W.said;
-      sub.textContent = left > 0 ? `${left} rep${left === 1 ? "" : "s"} left` : "Done!";
-      stt.textContent = "Set";
+      if (W.rp === "breathe"){
+        sub.textContent = "Keep the weight. 3 deep breaths…"; stt.textContent = "Rest-pause · breathe";
+      } else if (W.rp === "again"){
+        sub.textContent = `Round ${W.rounds + 1}. Go until you can't move it.`; stt.textContent = "Rest-pause";
+      } else {
+        sub.textContent = left > 0 ? `${left} rep${left === 1 ? "" : "s"} left` : "Done!";
+        stt.textContent = isRestPause(ex) ? "Rest-pause · first strike" : "Set";
+      }
     }
   } else if (W.state === "LOG"){
     big.textContent = Math.max(0, Math.ceil(10 - el / 1000)); big.classList.add("small");
@@ -1200,6 +1438,7 @@ $("cPlus").onclick = () => {
   W.flags.b1 = W.flags.b2 = W.flags.b3 = 0;
   render();
 };
+$("rpBreathe").onclick = startBreathe;
 $("cEarly").onclick = () => {
   if (W.state !== "SET") return;
   const ex = curEx();
@@ -1208,7 +1447,7 @@ $("cEarly").onclick = () => {
 $("cEnd").onclick = () => {
   if (confirm("End the workout now? Saved sets stay saved.")) finishWorkout();
 };
-$("backBtn").onclick = () => { W.state = "IDLE"; $("done").hidden = true; $("setup").hidden = false; renderPreview(); };
+$("backBtn").onclick = () => { W.state = "IDLE"; $("done").hidden = true; $("setup").hidden = false; renderPeople(); renderPreview(); renderProgress(); };
 
 /* ---------- export ---------- */
 function exportCSV(){
@@ -1223,6 +1462,62 @@ function exportCSV(){
 }
 $("exportBtn").onclick = exportCSV;
 $("exportBtn2").onclick = exportCSV;
+/* ---------- progress ---------- */
+let progressWho = "";
+function sparkline(vals){
+  const w = 110, h = 34, pad = 3;
+  if (vals.length < 2) return `<svg width="${w}" height="${h}" aria-hidden="true"><circle cx="${w - pad}" cy="${h / 2}" r="3" fill="var(--accent)"/></svg>`;
+  const lo = Math.min(...vals), hi = Math.max(...vals), span = hi - lo || 1;
+  const pts = vals.map((v, i) => [pad + i * (w - 2 * pad) / (vals.length - 1), h - pad - (v - lo) / span * (h - 2 * pad)]);
+  const d = pts.map(p => p.map(n => n.toFixed(1)).join(",")).join(" ");
+  const [lx, ly] = pts[pts.length - 1];
+  return `<svg width="${w}" height="${h}" aria-hidden="true"><polyline points="${d}" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="3.2" fill="var(--accent)"/></svg>`;
+}
+function renderProgress(){
+  const all = history();
+  const names = Object.keys(all).filter(n => all[n].length);
+  const box = $("progress");
+  if (!names.length){ box.innerHTML = `<p class="muted">Finish a workout and every lift shows up here with its own chart.</p>`; return; }
+  if (!names.includes(progressWho)) progressWho = names.includes(personName(S.people[0], 0)) ? personName(S.people[0], 0) : names[0];
+  const recs = all[progressWho];
+  const sessions = store.get("sessions", []).filter(s => s.person === progressWho);
+  const weekAgo = Date.now() - 7 * 864e5;
+  const thisWeek = sessions.filter(s => new Date(s.date + "T12:00").getTime() > weekAgo).length;
+  const volume = recs.reduce((a, r) => a + r.weight * r.repsDone, 0);
+  const byEx = {};
+  recs.forEach(r => {
+    const days = byEx[r.exercise] = byEx[r.exercise] || {};
+    const d = days[r.date] = days[r.date] || { w: 0, reps: 0 };
+    if (r.weight > d.w || (r.weight === d.w && r.repsDone > d.reps)){ d.w = r.weight; d.reps = r.repsDone; }
+  });
+  const rows = Object.entries(byEx).map(([name, days]) => {
+    const dates = Object.keys(days).sort();
+    const pts = dates.map(d => days[d]);
+    const bw = pts.every(p => p.w === 0);
+    const vals = pts.map(p => bw ? p.reps : p.w);
+    const best = pts.reduce((b, p) => (bw ? p.reps > b.reps : (p.w > b.w || (p.w === b.w && p.reps > b.reps))) ? p : b, pts[0]);
+    const diff = vals[vals.length - 1] - vals[0];
+    return { name, lastDate: dates[dates.length - 1], vals, bw, best, last: pts[pts.length - 1], diff, n: dates.length };
+  }).sort((a, b) => b.lastDate.localeCompare(a.lastDate) || a.name.localeCompare(b.name));
+  const fmtPt = (p, bw) => bw ? `${p.reps} reps` : `${+p.w.toFixed(2)} kg × ${p.reps}`;
+  box.innerHTML = `
+    ${names.length > 1 ? `<div class="seg" style="margin-bottom:12px">${names.map(n => `<button data-who="${esc(n)}" class="${n === progressWho ? "on" : ""}">${esc(n)}</button>`).join("")}</div>` : ""}
+    <div class="stats">
+      <div><b>${sessions.length}</b><span>workouts</span></div>
+      <div><b>${thisWeek}</b><span>this week</span></div>
+      <div><b>${volume >= 1000 ? (volume / 1000).toFixed(1) + "t" : Math.round(volume) + " kg"}</b><span>lifted</span></div>
+    </div>
+    ${rows.map(r => `<div class="prog-row">
+      <div class="prog-name"><b>${esc(r.name)}</b>
+        <span class="muted">Best ${fmtPt(r.best, r.bw)} · last ${fmtPt(r.last, r.bw)}</span>
+        ${r.n > 1 && r.diff !== 0 ? `<span class="${r.diff > 0 ? "up" : "down"}">${r.diff > 0 ? "▲" : "▼"} ${Math.abs(+r.diff.toFixed(2))}${r.bw ? " reps" : " kg"} since first</span>` : ""}
+      </div>${sparkline(r.vals)}</div>`).join("")}`;
+}
+$("progress").addEventListener("click", e => {
+  const b = e.target.closest("[data-who]"); if (!b) return;
+  progressWho = b.dataset.who; renderProgress();
+});
+
 function renderHistCount(){
   const n = Object.values(history()).flat().length;
   $("histCount").textContent = n ? `${n} sets saved on this phone.` : "No sets saved yet.";
@@ -1256,7 +1551,13 @@ bindRange("musicVol", "musicVol", v => `${Math.round(v * 100)}%`);
 renderPeople();
 renderPreview();
 renderHistCount();
+renderProgress();
 setInterval(tick, 50);
+
+// Installable + works offline in the gym
+if ("serviceWorker" in navigator && location.protocol === "https:"){
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
 </script>
 </body>
 </html>
