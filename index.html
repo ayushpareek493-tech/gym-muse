@@ -1,0 +1,1219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d0f12">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Gym Muse</title>
+<style>
+:root{
+  --bg:#0d0f12;--card:#171a1f;--card2:#1f232a;--line:#2a2f37;
+  --text:#f3f4f6;--muted:#9aa1ab;--accent:#ffd23f;--accent-ink:#1a1500;
+  --bad:#ff5c5c;--good:#4ade80;--info:#7cc4ff;
+  --r:16px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+body{padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+[hidden]{display:none!important}
+.wrap{max-width:640px;margin:0 auto;padding:16px}
+h1{font-size:28px;margin:8px 0 4px;letter-spacing:-.02em}
+h1 span{color:var(--accent)}
+h2{font-size:18px;margin:0 0 12px}
+.tag{color:var(--muted);margin:0 0 16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin:0 0 14px}
+label{display:block;font-size:14px;color:var(--muted);margin:10px 0 6px}
+input[type=text],input[type=number],textarea,select{width:100%;background:var(--card2);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:12px;font:inherit;font-size:16px}
+textarea{min-height:150px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px;resize:vertical}
+textarea.has-err{border-color:var(--bad)}
+input[type=range]{width:100%;accent-color:var(--accent)}
+button{font:inherit;border:0;border-radius:12px;padding:12px 14px;background:var(--card2);color:var(--text);cursor:pointer;min-height:48px}
+button:active{transform:scale(.98)}
+button:disabled{opacity:.4}
+.primary{background:var(--accent);color:var(--accent-ink);font-weight:700}
+.danger{background:#3a1a1c;color:#ffb3b3}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.row>*{flex:1 1 auto}
+.seg{display:flex;background:var(--card2);border-radius:12px;padding:4px;gap:4px}
+.seg button{flex:1;min-height:42px;background:transparent;color:var(--muted)}
+.seg button.on{background:var(--accent);color:var(--accent-ink);font-weight:700}
+.person-head{display:flex;gap:8px;align-items:center}
+.person-head input{flex:1}
+.person-head button{flex:0 0 auto;min-height:44px}
+.errs{margin:8px 0 0;padding:0;list-style:none}
+.errs li{color:var(--bad);font-size:14px;padding:4px 0}
+.errs code{background:#2b1416;padding:1px 5px;border-radius:5px;color:#ffc2c2}
+.muted{color:var(--muted);font-size:14px}
+.val{float:right;color:var(--text)}
+.pv-person{margin:0 0 14px}
+.pv-person h3{margin:0 0 6px;font-size:16px}
+.pv-ex{padding:10px 0;border-top:1px solid var(--line)}
+.pv-ex b{display:block}
+.pv-ex .muted{display:block}
+.sug{margin-top:6px;font-size:14px;color:var(--info);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.sug button{min-height:34px;padding:6px 10px;font-size:14px}
+.warn{background:#2a2410;border:1px solid #5a4a12;color:#ffe9a6;border-radius:12px;padding:12px;margin:10px 0;font-size:15px}
+.ok{background:#11261a;border:1px solid #1f5133;color:#b9f5cf;border-radius:12px;padding:12px;margin:10px 0;font-size:15px}
+.opts{display:grid;gap:8px;margin-top:10px}
+.opts button{text-align:left}
+.opts button.on{outline:2px solid var(--accent)}
+.opts small{display:block;color:var(--muted)}
+.finish{font-size:20px;font-weight:700;margin:6px 0}
+.start{width:100%;font-size:20px;min-height:64px;margin:6px 0 14px}
+.list{font-size:14px;color:var(--muted);margin:6px 0 0}
+
+/* workout */
+#workout{min-height:100vh;display:flex;flex-direction:column}
+.w-main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:16px}
+.chip{display:inline-block;background:var(--accent);color:var(--accent-ink);font-weight:800;border-radius:999px;padding:6px 16px;font-size:20px}
+.w-ex{font-size:30px;font-weight:800;margin:14px 0 2px;line-height:1.15}
+.w-meta{font-size:20px;color:var(--muted)}
+.big{font-size:min(42vw,240px);font-weight:900;line-height:1;margin:18px 0 6px;font-variant-numeric:tabular-nums;letter-spacing:-.04em}
+.big.small{font-size:min(26vw,150px)}
+.w-sub{font-size:22px;color:var(--muted);min-height:1.5em;padding:0 8px}
+.state{font-size:15px;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin-top:10px}
+.log{width:100%;max-width:420px;margin-top:18px}
+.stepper{display:flex;align-items:center;gap:10px;margin:10px 0}
+.stepper span{flex:1;font-size:34px;font-weight:800;font-variant-numeric:tabular-nums}
+.stepper button{width:72px;height:64px;font-size:30px;font-weight:700}
+.stepper small{display:block;font-size:14px;color:var(--muted);font-weight:400}
+.log .primary{width:100%;font-size:22px;min-height:64px;margin-top:8px}
+.controls{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px 12px calc(12px + env(safe-area-inset-bottom));background:var(--card);border-top:1px solid var(--line)}
+.controls button{min-height:56px;font-weight:600}
+.controls .wide{grid-column:span 2}
+.paused-banner{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;font-size:40px;font-weight:900;pointer-events:none}
+.sum-person{border-top:1px solid var(--line);padding:12px 0}
+.sum-person:first-child{border-top:0}
+.sum-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.sum-grid div{background:var(--card2);border-radius:12px;padding:10px}
+.sum-grid b{display:block;font-size:22px}
+.pr{color:var(--accent)}
+</style>
+</head>
+<body>
+
+<!-- ============ SETUP ============ -->
+<section id="setup" class="wrap">
+  <h1>Gym <span>Muse</span> 🦆</h1>
+  <p class="tag">Your voice coach. Runs the plan, times your rest, counts your reps.</p>
+
+  <div class="card">
+    <h2>People</h2>
+    <div id="people"></div>
+    <button id="addPerson" style="width:100%">+ Add training partner</button>
+  </div>
+
+  <div class="card">
+    <h2>Rest</h2>
+    <div class="seg" id="modeSeg">
+      <button data-mode="manual">Manual rest</button>
+      <button data-mode="budget">Time budget</button>
+    </div>
+    <div id="manualBox">
+      <label for="defaultRest">Default rest (seconds). Any line can override with <code>rest 120</code>.</label>
+      <input type="number" id="defaultRest" min="10" max="600" inputmode="numeric">
+    </div>
+    <div id="budgetBox">
+      <label for="budgetMin">Total session (minutes)</label>
+      <input type="number" id="budgetMin" min="5" max="240" inputmode="numeric">
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Settings</h2>
+    <label>Rep tempo <span class="val" id="tempoVal"></span></label>
+    <input type="range" id="tempo" min="2" max="4" step="0.5">
+    <label for="coach">Coach</label>
+    <select id="coach"></select>
+    <label for="voice">Voice</label>
+    <select id="voice"><option value="">Default</option></select>
+    <label>Voice volume <span class="val" id="voiceVolVal"></span></label>
+    <input type="range" id="voiceVol" min="0" max="1" step="0.05">
+    <label>Music</label>
+    <div class="seg" id="musicSeg">
+      <button data-music="sets">Sets only</button>
+      <button data-music="whole">Whole workout</button>
+      <button data-music="off">Off</button>
+    </div>
+    <label>Music volume <span class="val" id="musicVolVal"></span></label>
+    <input type="range" id="musicVol" min="0" max="1" step="0.05">
+    <label>Your music</label>
+    <button id="addMusic" style="width:100%">🎵 Add music from this phone</button>
+    <input type="file" id="musicFiles" accept="audio/*" multiple hidden>
+    <div class="list" id="musicList">Add your music again each workout (the browser can't keep it).</div>
+  </div>
+
+  <div class="card">
+    <h2>Preview</h2>
+    <div id="preview"></div>
+  </div>
+
+  <button id="startBtn" class="primary start">Start workout</button>
+
+  <div class="card">
+    <h2>History</h2>
+    <p class="muted" id="histCount"></p>
+    <div class="row">
+      <button id="exportBtn">Export history (CSV)</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ WORKOUT ============ -->
+<section id="workout" hidden>
+  <div class="w-main">
+    <div><span class="chip" id="wWho"></span></div>
+    <div class="w-ex" id="wEx"></div>
+    <div class="w-meta" id="wMeta"></div>
+    <div class="big" id="wBig"></div>
+    <div class="w-sub" id="wSub"></div>
+    <div class="state" id="wState"></div>
+
+    <div id="wReady" class="log" hidden>
+      <button class="primary" id="readyGo">Start</button>
+    </div>
+
+    <div id="wLog" class="log" hidden>
+      <div class="stepper">
+        <button id="repsMinus">−</button>
+        <span><small id="repsLabel">Reps done</small><b id="logReps"></b></span>
+        <button id="repsPlus">+</button>
+      </div>
+      <div class="stepper">
+        <button id="wMinus">−</button>
+        <span><small>Weight (kg)</small><b id="logWeight"></b></span>
+        <button id="wPlus">+</button>
+      </div>
+      <button class="primary" id="saveLog">Save</button>
+    </div>
+  </div>
+  <div class="controls">
+    <button id="cPause">Pause</button>
+    <button id="cSkip">Skip rest</button>
+    <button id="cPlus">+30 s rest</button>
+    <button id="cEarly" class="wide">Done early</button>
+    <button id="cEnd" class="danger">End</button>
+  </div>
+  <div class="paused-banner" id="pausedBanner" hidden>PAUSED</div>
+</section>
+
+<!-- ============ DONE ============ -->
+<section id="done" class="wrap" hidden>
+  <h1>Workout <span>done</span> 🦆</h1>
+  <div class="card" id="summary"></div>
+  <button class="primary start" id="backBtn">Back to setup</button>
+  <button id="exportBtn2" style="width:100%">Export history (CSV)</button>
+</section>
+
+<script>
+"use strict";
+/* =====================================================================
+   CORE: parsing + planning (pure functions, no DOM)
+   ===================================================================== */
+const COMPOUND_WORDS = ["squat","deadlift","bench","press","row","pull up","pull-up","pullup","chin","lunge","hip thrust","rdl","dip","clean","snatch"];
+const TYPES = {
+  compound:  { w: 1.5, min: 60, max: 180, jump: 2.5 },
+  isolation: { w: 1.0, min: 45, max: 120, jump: 1 }
+};
+const SETUP_S = 10, TRANSITION_S = 60;
+
+function exType(name){
+  const n = name.toLowerCase();
+  return COMPOUND_WORDS.some(k => n.includes(k)) ? "compound" : "isolation";
+}
+
+function parseLine(raw){
+  const parts = raw.split(",").map(s => s.trim());
+  while (parts.length > 1 && parts[parts.length-1] === "") parts.pop();
+  const name = parts[0];
+  if (!name) return { err: "Missing the exercise name at the start" };
+  if (parts.length < 2) return { err: 'Needs sets x reps after the name, like "3 x 10"' };
+  const m = parts[1].replace(/\s+/g, "").match(/^(\d+)[x×*](\d+)(s|sec|secs)?$/i);
+  if (!m) return { err: `Couldn't read "${parts[1]}" as sets x reps. Use 3 x 10, or 3 x 45s for a hold` };
+  const sets = +m[1], n = +m[2], timed = !!m[3];
+  if (sets < 1 || sets > 20) return { err: "Sets should be between 1 and 20" };
+  if (n < 1 || n > (timed ? 600 : 100)) return { err: timed ? "Hold should be 1 to 600 seconds" : "Reps should be 1 to 100" };
+  let weight = 0, rest = null;
+  for (const p of parts.slice(2)){
+    const q = p.replace(/\s+/g, "").toLowerCase();
+    let r;
+    if (q === "") continue;
+    if ((r = q.match(/^rest(\d+)(s|sec|secs)?$/))) { rest = +r[1]; continue; }
+    if (q === "bw" || q === "bodyweight") { weight = 0; continue; }
+    if ((r = q.match(/^(\d+(?:\.\d+)?)(kg|kgs)?$/))) { weight = +r[1]; continue; }
+    return { err: `Couldn't read "${p}". Use a weight like 60kg, bw, or rest 90` };
+  }
+  return { ex: { name, sets, reps: timed ? 0 : n, hold: timed ? n : 0, weight, rest, type: exType(name) } };
+}
+
+function parsePlan(text){
+  const exercises = [], errors = [];
+  text.split(/\r?\n/).forEach((raw, i) => {
+    const t = raw.trim();
+    if (!t || t.startsWith("#")) return;
+    const r = parseLine(t);
+    if (r.err) errors.push({ line: i + 1, text: t, why: r.err });
+    else { r.ex.line = i; exercises.push(r.ex); }
+  });
+  return { exercises, errors };
+}
+
+function formatLine(ex){
+  const amount = ex.hold ? ex.hold + "s" : ex.reps;
+  const w = ex.weight > 0 ? `, ${+ex.weight.toFixed(2)}kg` : ", bw";
+  const r = ex.rest != null ? `, rest ${ex.rest}` : "";
+  return `${ex.name}, ${ex.sets} x ${amount}${w}${r}`;
+}
+
+function csvToPlan(text){
+  const rows = text.split(/\r?\n/).map(l => l.split(",").map(s => s.trim())).filter(r => r.some(Boolean));
+  if (!rows.length) return "";
+  let start = 0, idx = { exercise:0, sets:1, reps:2, weight:3, rest:4 };
+  if (rows[0].some(c => /exercise/i.test(c))){
+    const h = rows[0].map(c => c.toLowerCase());
+    for (const k of Object.keys(idx)) { const j = h.indexOf(k); idx[k] = j; }
+    start = 1;
+  }
+  return rows.slice(start).map(r => {
+    const g = k => idx[k] >= 0 ? (r[idx[k]] || "") : "";
+    let line = `${g("exercise")}, ${g("sets")} x ${g("reps")}`;
+    if (g("weight")) line += `, ${/^\d/.test(g("weight")) && !/kg/i.test(g("weight")) ? g("weight") + "kg" : g("weight")}`;
+    if (g("rest")) line += `, rest ${g("rest").replace(/[^\d]/g, "")}`;
+    return line;
+  }).join("\n");
+}
+
+function setDuration(ex, tempo){
+  return ex.hold ? ex.hold + SETUP_S : ex.reps * tempo + SETUP_S;
+}
+
+/* Build the ordered list of sets for one person.
+   opt.superset: pair neighbouring isolation exercises.
+   opt.drop: { exIndex: setsRemoved } */
+function buildSteps(exs, tempo, opt = {}){
+  const setsOf = i => exs[i].sets - ((opt.drop && opt.drop[i]) || 0);
+  const blocks = [];
+  for (let i = 0; i < exs.length; i++){
+    if (opt.superset && exs[i].type === "isolation" && i + 1 < exs.length && exs[i+1].type === "isolation"){
+      blocks.push([i, i+1]); i++;
+    } else blocks.push([i]);
+  }
+  const steps = [];
+  blocks.forEach((b, bi) => {
+    const rounds = Math.max(...b.map(setsOf));
+    for (let r = 1; r <= rounds; r++){
+      const inRound = b.filter(i => setsOf(i) >= r);
+      inRound.forEach((i, k) => {
+        steps.push({
+          ex: i, set: r, sets: setsOf(i), block: bi,
+          pair: b.length > 1 ? b.find(j => j !== i) : null,
+          dur: setDuration(exs[i], tempo),
+          gap: k < inRound.length - 1 ? "none" : "rest",
+          rest: 0, restAfter: 0, transition: false
+        });
+      });
+    }
+  });
+  steps.forEach((s, j) => {
+    const nx = steps[j+1];
+    if (!nx) s.gap = "end";
+    s.transition = !!nx && nx.block !== s.block;
+  });
+  return steps;
+}
+
+/* Split `available` seconds across gaps by rest weight, clamping and
+   redistributing (section 4.2). Returns rests rounded to 5 s. */
+function allocate(types, available){
+  const n = types.length;
+  const fixed = new Array(n).fill(null);
+  for (let loop = 0; loop < 10; loop++){
+    const free = fixed.map((v, i) => v === null ? i : -1).filter(i => i >= 0);
+    if (!free.length) break;
+    const used = fixed.reduce((a, v) => a + (v || 0), 0);
+    const unit = (available - used) / free.reduce((a, i) => a + TYPES[types[i]].w, 0);
+    // Fix the worst side first so redistribution converges cleanly
+    const lows = free.filter(i => TYPES[types[i]].w * unit < TYPES[types[i]].min);
+    const highs = free.filter(i => TYPES[types[i]].w * unit > TYPES[types[i]].max);
+    if (!lows.length && !highs.length){ free.forEach(i => fixed[i] = TYPES[types[i]].w * unit); break; }
+    if (lows.length) lows.forEach(i => fixed[i] = TYPES[types[i]].min);
+    else highs.forEach(i => fixed[i] = TYPES[types[i]].max);
+  }
+  return fixed.map((v, i) => {
+    const T = TYPES[types[i]];
+    if (v === null) v = T.min;
+    return Math.round(Math.min(T.max, Math.max(T.min, v)) / 5) * 5;
+  });
+}
+
+/* settings: { mode, defaultRest, budgetMin, tempo } */
+function planPerson(exs, s, opt = {}){
+  const steps = buildSteps(exs, s.tempo, opt);
+  const work = steps.reduce((a, st) => a + st.dur, 0);
+  const trans = steps.filter(st => st.transition).length * TRANSITION_S;
+  const gaps = steps.filter(st => st.gap === "rest");
+  const budget = s.budgetMin * 60;
+  let short = false, early = false;
+  if (s.mode === "manual"){
+    gaps.forEach(st => st.rest = exs[st.ex].rest != null ? exs[st.ex].rest : s.defaultRest);
+  } else {
+    const types = gaps.map(st => exs[st.ex].type);
+    const available = budget - work - trans;
+    const minSum = types.reduce((a, t) => a + TYPES[t].min, 0);
+    const maxSum = types.reduce((a, t) => a + TYPES[t].max, 0);
+    let rests;
+    if (opt.minRest || available < minSum){
+      short = available < minSum;
+      rests = types.map(t => TYPES[t].min);
+    } else {
+      rests = allocate(types, available);
+      early = available >= maxSum;
+    }
+    gaps.forEach((st, k) => st.rest = rests[k]);
+  }
+  steps.forEach(st => st.restAfter = (st.gap === "rest" ? st.rest : 0) + (st.transition ? TRANSITION_S : 0));
+  const total = work + trans + gaps.reduce((a, st) => a + st.rest, 0);
+  return { steps, work, trans, total, short, early, budget };
+}
+
+/* Simulate the turn rotation (also works for one person). */
+function simulate(plans){
+  const n = plans.length;
+  const idx = new Array(n).fill(0), ready = new Array(n).fill(0), finish = new Array(n).fill(0);
+  let t = 0, cur = -1, buffers = 0;
+  for (;;){
+    let p = -1;
+    for (let k = 1; k <= n; k++){ const c = (cur + k + n) % n; if (idx[c] < plans[c].steps.length){ p = c; break; } }
+    if (p < 0) break;
+    const st = plans[p].steps[idx[p]];
+    const b = Math.max(0, ready[p] - t);
+    t += b; if (n > 1) buffers += b;
+    t += st.dur;
+    ready[p] = t + st.restAfter;
+    finish[p] = t;
+    idx[p]++; cur = p;
+  }
+  return { total: t, finish, buffers };
+}
+
+/* Plan every person. With partners on a time budget, rests are first sized as if
+   solo, then the budget used for sizing is shrunk by the simulated overrun and
+   re-planned, so the whole group (with turn-taking) lands on the target. */
+function planAll(peopleExs, s, optFor){
+  const budget = s.budgetMin * 60;
+  let eff = budget, plans;
+  for (let k = 0; k < 6; k++){
+    const s2 = { ...s, budgetMin: eff / 60 };
+    plans = peopleExs.map((e, p) => planPerson(e, s2, optFor(p)));
+    if (s.mode !== "budget" || plans.length === 1 || plans.some(p => p.short)) break;
+    const over = simulate(plans).total - budget;
+    if (over <= 30) break;
+    eff -= over;
+  }
+  return plans;
+}
+
+function dropLoop(peopleExs, s, extra, fits){
+  // Remove the last set of isolation exercises from the bottom, one at a time, never below 2.
+  const drops = peopleExs.map(() => ({}));
+  const dropped = peopleExs.map(() => []);
+  let plans = planAll(peopleExs, s, p => ({ ...extra, drop: drops[p] }));
+  while (!fits(plans)){
+    let did = false;
+    outer:
+    for (let p = 0; p < peopleExs.length; p++){
+      const exs = peopleExs[p];
+      for (let i = exs.length - 1; i >= 0; i--){
+        const left = exs[i].sets - (drops[p][i] || 0);
+        if (exs[i].type === "isolation" && left > 2){
+          drops[p][i] = (drops[p][i] || 0) + 1;
+          dropped[p].push(`${exs[i].name} set ${left}`);
+          did = true;
+          plans = planAll(peopleExs, s, q => ({ ...extra, drop: drops[q] }));
+          if (fits(plans)) break outer;
+        }
+      }
+    }
+    if (!did) break;
+  }
+  return { plans, dropped, drops };
+}
+
+/* Plan everyone. choice: null | "superset" | "drop" | "anyway" */
+function planGroup(peopleExs, s, choice){
+  const budget = s.budgetMin * 60;
+  const overBy = plans => simulate(plans).total - budget;
+  const fits = plans => !plans.some(p => p.short) && (plans.length === 1 || overBy(plans) <= 60);
+  let plans = planAll(peopleExs, s, () => ({}));
+  let dropped = peopleExs.map(() => []);
+  const needsChoice = s.mode === "budget" && !fits(plans);
+  if (needsChoice){
+    if (choice === "superset"){
+      plans = planAll(peopleExs, s, () => ({ superset: true }));
+      if (!fits(plans)) plans = planAll(peopleExs, s, () => ({ superset: true, minRest: true }));
+    } else if (choice === "drop"){
+      const r = dropLoop(peopleExs, s, {}, fits);
+      plans = r.plans; dropped = r.dropped;
+      if (!fits(plans)) plans = planAll(peopleExs, s, p => ({ drop: r.drops[p], minRest: true }));
+    } else {
+      plans = planAll(peopleExs, s, () => ({ minRest: true }));
+    }
+  }
+  const sim = simulate(plans);
+  const early = s.mode === "budget" && !needsChoice && plans.every(p => p.early) ? Math.max(0, budget - sim.total) : 0;
+  return { plans, sim, total: sim.total, needsChoice, choice: needsChoice ? choice : null, dropped, early, budget };
+}
+
+/* Progression + PRs */
+function suggestFor(history, ex){
+  const recs = history.filter(r => r.exercise.toLowerCase() === ex.name.toLowerCase());
+  if (!recs.length) return null;
+  const lastDate = recs.map(r => r.date).sort().pop();
+  const last = recs.filter(r => r.date === lastDate);
+  const missed = last.filter(r => r.repsDone < r.targetReps).length;
+  const w = Math.max(...last.map(r => r.weight));
+  const target = last[0].targetReps;
+  const unit = ex.hold ? "s" : "";
+  if (missed === 0){
+    if (w > 0){
+      const nw = +(w + TYPES[ex.type].jump).toFixed(2);
+      return { text: `Last time ${fmtW(w)} x ${target}${unit} on all sets. Try ${fmtW(nw)}.`, apply: nw > ex.weight ? { weight: nw } : null };
+    }
+    if (ex.hold) return { text: `Last time ${target}s on all sets. Try ${target + 5}s.`, apply: target + 5 > ex.hold ? { hold: target + 5 } : null };
+    return { text: `Last time ${target} reps on all sets. Try ${target + 1}.`, apply: target + 1 > ex.reps ? { reps: target + 1 } : null };
+  }
+  if (missed >= 2) return { text: `Last time you missed ${missed} sets at ${fmtW(w)}. Stay at ${fmtW(w)}.`, apply: null };
+  return { text: `Last time ${fmtW(w)}, missed 1 set. Stay at ${fmtW(w)} and own it.`, apply: null };
+}
+
+function isPR(history, exercise, weight, reps){
+  if (weight <= 0) return false;
+  const prev = history.filter(r => r.exercise.toLowerCase() === exercise.toLowerCase());
+  if (!prev.length) return false;
+  const best = Math.max(0, ...prev.filter(r => r.repsDone >= reps).map(r => r.weight));
+  return weight > best;
+}
+
+function fmtW(w){ return w > 0 ? `${+(+w).toFixed(2)} kg` : "bodyweight"; }
+function fmtDur(sec){
+  sec = Math.max(0, Math.round(sec));
+  const m = Math.floor(sec / 60), s = sec % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+function fmtMin(sec){ return `${Math.round(sec / 60)} min`; }
+
+/* =====================================================================
+   COACH PERSONALITIES
+   ===================================================================== */
+const PERSONALITIES = {
+  duck: {
+    id: "duck",
+    name: "Duck",
+    voice: { pitch: 2.0, rate: 1.15, voiceNameHint: "" },
+    lines: {
+      start:      ["Let's waddle!", "Quack quack, let's go!", "Feathers up, let's go!"],
+      rep:        ["Yes!", "Quack!", "Smooth!", "Easy!"],
+      threeLeft:  ["Three more!", "Three more, little duck!", "Three left, flap harder!"],
+      push:       ["Come on!", "Push, push!", "Don't you dare stop!"],
+      last:       ["Last one!", "Final quack!", "Last one, big bird!"],
+      setDone:    ["Quack yes! Set done.", "That's a strong duck.", "Beautiful. Pond champion."],
+      restStart:  ["Rest up.", "Float on the pond for a bit.", "Breathe, duck."],
+      thirty:     ["Thirty seconds, get ready.", "Thirty seconds. Stretch those wings."],
+      ten:        ["Ten seconds, get set up!", "Ten seconds. Back to the pond!"],
+      handover:   ["Nice work {name}. {nextName}, you're up!", "{name}, top quack. {nextName}, your turn!"],
+      pr:         ["New record on {exercise}! Quack quack quack!", "PR! That's the strongest duck in the gym!"],
+      sessionDone:["Workout done. You're one buff duck.", "That's a wrap. Go eat some bread. Just kidding, eat protein."]
+    }
+  }
+};
+
+/* =====================================================================
+   STORAGE
+   ===================================================================== */
+const store = {
+  get(k, d){ try { const v = localStorage.getItem("gymMuse." + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v){ try { localStorage.setItem("gymMuse." + k, JSON.stringify(v)); } catch {} }
+};
+const SAMPLE = `Bench Press, 4 x 8, 60kg
+Incline Dumbbell Press, 3 x 10, 22.5kg
+Cable Fly, 3 x 12, 15kg
+Lateral Raise, 3 x 15, 8kg
+Tricep Pushdown, 3 x 12, 25kg`;
+
+const S = Object.assign({
+  people: [{ name: "", plan: "" }],
+  mode: "budget", defaultRest: 90, budgetMin: 45, tempo: 3,
+  coach: "duck", voiceName: "", voiceVol: 1, music: "sets", musicVol: 0.7
+}, store.get("settings", {}));
+let fitChoice = null;
+function saveSettings(){ store.set("settings", S); }
+function history(){ return store.get("history", {}); }
+function personHistory(name){ return history()[name.trim() || "Me"] || []; }
+
+/* =====================================================================
+   AUDIO: speech, beeps, music, wake lock
+   ===================================================================== */
+const A = { ctx: null, musicGain: null, src: null, utter: null, unduckTimer: null, lastLine: {} };
+const audioEl = new Audio();
+audioEl.preload = "auto";
+const M = { urls: [], names: [], i: 0, wanted: false };
+
+function ensureAudio(){
+  if (!A.ctx){
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (AC){
+      A.ctx = new AC();
+      try {
+        A.src = A.ctx.createMediaElementSource(audioEl);
+        A.musicGain = A.ctx.createGain();
+        A.musicGain.gain.value = S.musicVol;
+        A.src.connect(A.musicGain).connect(A.ctx.destination);
+      } catch { A.musicGain = null; }
+    }
+  }
+  if (A.ctx && A.ctx.state === "suspended") A.ctx.resume();
+}
+
+function beep(freq = 880, dur = 0.12){
+  if (!A.ctx) return;
+  const t = A.ctx.currentTime;
+  const o = A.ctx.createOscillator(), g = A.ctx.createGain();
+  o.type = "sine"; o.frequency.value = freq;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(Math.max(0.05, S.voiceVol) * 0.6, t + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(A.ctx.destination);
+  o.start(t); o.stop(t + dur + 0.02);
+}
+
+function coach(){ return PERSONALITIES[S.coach] || PERSONALITIES.duck; }
+function line(kind, vars = {}){
+  const list = coach().lines[kind] || [];
+  if (!list.length) return "";
+  let opts = list.filter(l => l !== A.lastLine[kind]);
+  if (!opts.length) opts = list;
+  const pick = opts[Math.floor(Math.random() * opts.length)];
+  A.lastLine[kind] = pick;
+  return pick.replace(/\{(\w+)\}/g, (_, k) => vars[k] != null ? vars[k] : "");
+}
+function shortLine(kind, maxWords){
+  // keep rep call-outs shorter than the tempo
+  const list = coach().lines[kind].filter(l => l.split(/\s+/).length <= maxWords);
+  if (!list.length) return line(kind);
+  let opts = list.filter(l => l !== A.lastLine[kind]);
+  if (!opts.length) opts = list;
+  const pick = opts[Math.floor(Math.random() * opts.length)];
+  A.lastLine[kind] = pick;
+  return pick;
+}
+
+let voices = [];
+function loadVoices(){
+  if (!("speechSynthesis" in window)) return;
+  voices = speechSynthesis.getVoices().filter(v => /^en/i.test(v.lang));
+  const sel = document.getElementById("voice");
+  sel.innerHTML = '<option value="">Default</option>' + voices.map(v => `<option value="${esc(v.name)}">${esc(v.name)} (${v.lang})</option>`).join("");
+  sel.value = S.voiceName || "";
+}
+function pickVoice(){
+  if (S.voiceName) return voices.find(v => v.name === S.voiceName) || null;
+  const hint = coach().voice.voiceNameHint;
+  if (hint) return voices.find(v => v.name.toLowerCase().includes(hint.toLowerCase())) || null;
+  return null;
+}
+
+function speak(text){
+  if (!text || !("speechSynthesis" in window)) return;
+  speechSynthesis.cancel();                 // never queue: keep the count in time
+  const u = new SpeechSynthesisUtterance(text);
+  const P = coach().voice;
+  u.pitch = P.pitch; u.rate = P.rate; u.volume = S.voiceVol;
+  const v = pickVoice(); if (v){ u.voice = v; u.lang = v.lang; } else u.lang = "en-US";
+  u.onstart = () => { if (A.utter === u) duck(); };
+  u.onend = u.onerror = () => { if (A.utter === u) unduck(); };
+  A.utter = u;
+  speechSynthesis.speak(u);
+}
+
+function setMusicVolume(v, ms){
+  if (A.musicGain && A.ctx){
+    const g = A.musicGain.gain, t = A.ctx.currentTime;
+    g.cancelScheduledValues(t);
+    g.setValueAtTime(g.value, t);
+    g.linearRampToValueAtTime(v, t + ms / 1000);
+  } else {
+    audioEl.volume = Math.max(0, Math.min(1, v));
+  }
+}
+function duck(){ clearTimeout(A.unduckTimer); setMusicVolume(S.musicVol * 0.2, 200); }
+function unduck(){ clearTimeout(A.unduckTimer); A.unduckTimer = setTimeout(() => setMusicVolume(S.musicVol, 200), 300); }
+
+audioEl.addEventListener("ended", () => {
+  if (!M.urls.length) return;
+  M.i = (M.i + 1) % M.urls.length;
+  audioEl.src = M.urls[M.i];
+  if (M.wanted) audioEl.play().catch(() => {});
+});
+function musicPlay(){
+  if (S.music === "off" || !M.urls.length) return;
+  M.wanted = true;
+  if (!audioEl.src) audioEl.src = M.urls[M.i];
+  audioEl.play().catch(() => {});
+}
+function musicPause(){ M.wanted = false; audioEl.pause(); }
+function musicForState(state){
+  if (S.music === "off" || W.paused) return musicPause();
+  if (S.music === "whole") return (state === "DONE" ? musicPause() : musicPlay());
+  if (state === "SET" || state === "COUNTDOWN") musicPlay(); else musicPause();
+}
+
+let wakeLock = null;
+async function requestWake(){
+  try { if ("wakeLock" in navigator && !wakeLock){ wakeLock = await navigator.wakeLock.request("screen"); wakeLock.addEventListener("release", () => { wakeLock = null; }); } } catch {}
+}
+function releaseWake(){ try { wakeLock && wakeLock.release(); } catch {} wakeLock = null; }
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && W.state !== "IDLE" && W.state !== "DONE") requestWake();
+});
+
+/* =====================================================================
+   SETUP UI
+   ===================================================================== */
+const $ = id => document.getElementById(id);
+function esc(s){ return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
+
+function personName(p, i){ return (p.name || "").trim() || (S.people.length > 1 ? `Person ${i + 1}` : "Me"); }
+
+function renderPeople(){
+  const box = $("people");
+  box.innerHTML = S.people.map((p, i) => `
+    <div class="card" style="background:var(--card2);padding:12px" data-i="${i}">
+      <div class="person-head">
+        <input type="text" placeholder="Name" value="${esc(p.name)}" data-f="name" aria-label="Name">
+        ${S.people.length > 1 ? `<button class="danger" data-a="remove" aria-label="Remove person">✕</button>` : ""}
+      </div>
+      <label>Workout plan. One exercise per line: <code>Name, 4 x 8, 60kg, rest 90</code></label>
+      <textarea data-f="plan" spellcheck="false" autocapitalize="off" placeholder="Bench Press, 4 x 8, 60kg">${esc(p.plan)}</textarea>
+      <ul class="errs" data-errs></ul>
+      <div class="row" style="margin-top:8px">
+        <button data-a="sample">Load sample plan</button>
+        <button data-a="last">Load last plan</button>
+        <button data-a="csv">Upload CSV</button>
+      </div>
+      <input type="file" accept=".csv,text/csv" hidden data-csv>
+    </div>`).join("");
+  $("addPerson").hidden = S.people.length >= 3;
+}
+
+$("people").addEventListener("input", e => {
+  const card = e.target.closest("[data-i]"); if (!card) return;
+  const i = +card.dataset.i, f = e.target.dataset.f;
+  if (f){ S.people[i][f] = e.target.value; fitChoice = null; saveSettings(); schedulePreview(); }
+});
+$("people").addEventListener("click", e => {
+  const b = e.target.closest("[data-a]"); if (!b) return;
+  const card = b.closest("[data-i]"), i = +card.dataset.i, p = S.people[i];
+  const a = b.dataset.a;
+  if (a === "remove"){ S.people.splice(i, 1); }
+  if (a === "sample"){ p.plan = SAMPLE; }
+  if (a === "last"){
+    const plans = store.get("plans", {});
+    const t = plans[personName(p, i)] || store.get("lastPlan", "");
+    if (!t){ alert("No saved plan yet. It saves when you start a workout."); return; }
+    p.plan = t;
+  }
+  if (a === "csv"){ card.querySelector("[data-csv]").click(); return; }
+  fitChoice = null; saveSettings(); renderPeople(); renderPreview();
+});
+$("people").addEventListener("change", async e => {
+  if (!e.target.matches("[data-csv]")) return;
+  const card = e.target.closest("[data-i]"), i = +card.dataset.i;
+  const f = e.target.files[0]; if (!f) return;
+  S.people[i].plan = csvToPlan(await f.text());
+  fitChoice = null; saveSettings(); renderPeople(); renderPreview();
+});
+$("addPerson").onclick = () => { if (S.people.length < 3){ S.people.push({ name: "", plan: "" }); saveSettings(); renderPeople(); renderPreview(); } };
+
+function bindSeg(id, key, attr){
+  const seg = $(id);
+  const paint = () => seg.querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset[attr] === S[key]));
+  seg.addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    S[key] = b.dataset[attr]; fitChoice = null; saveSettings(); paint(); syncModeBoxes(); renderPreview();
+  });
+  paint();
+}
+function syncModeBoxes(){ $("manualBox").hidden = S.mode !== "manual"; $("budgetBox").hidden = S.mode !== "budget"; }
+
+function bindNum(id, key){
+  const el = $(id); el.value = S[key];
+  el.addEventListener("input", () => { const v = parseFloat(el.value); if (!isNaN(v) && v > 0){ S[key] = v; fitChoice = null; saveSettings(); schedulePreview(); } });
+}
+function bindRange(id, key, fmt){
+  const el = $(id), out = $(id + "Val");
+  el.value = S[key]; out.textContent = fmt(S[key]);
+  el.addEventListener("input", () => { S[key] = parseFloat(el.value); out.textContent = fmt(S[key]); saveSettings(); if (key === "musicVol") setMusicVolume(S.musicVol, 50); if (key === "tempo"){ fitChoice = null; schedulePreview(); } });
+}
+
+let pvTimer = null;
+function schedulePreview(){ clearTimeout(pvTimer); pvTimer = setTimeout(renderPreview, 250); }
+
+function currentParse(){
+  return S.people.map((p, i) => ({ name: personName(p, i), ...parsePlan(p.plan || "") }));
+}
+
+let lastGroup = null;
+function renderPreview(){
+  const parsed = currentParse();
+  let blocking = false;
+  document.querySelectorAll("#people [data-i]").forEach((card, i) => {
+    const errs = parsed[i].errors;
+    card.querySelector("[data-errs]").innerHTML = errs.map(e => `<li>Line ${e.line}: <code>${esc(e.text)}</code><br>${esc(e.why)}</li>`).join("");
+    card.querySelector("textarea").classList.toggle("has-err", errs.length > 0);
+    if (errs.length) blocking = true;
+  });
+  const names = parsed.map(p => p.name.toLowerCase());
+  const dupName = names.some((n, i) => names.indexOf(n) !== i);
+  const empty = parsed.filter(p => !p.exercises.length);
+  const pv = $("preview");
+  let html = "";
+  if (blocking) html += `<div class="warn">Fix the lines in red before you start.</div>`;
+  if (dupName) { html += `<div class="warn">Give each person a different name.</div>`; blocking = true; }
+  if (empty.length){ html += `<div class="muted">Add a plan for ${empty.map(p => esc(p.name)).join(" and ")} (or tap “Load sample plan”).</div>`; blocking = true; }
+  if (blocking){ pv.innerHTML = html; $("startBtn").disabled = true; lastGroup = null; return; }
+
+  const s = { mode: S.mode, defaultRest: S.defaultRest, budgetMin: S.budgetMin, tempo: S.tempo };
+  const g = planGroup(parsed.map(p => p.exercises), s, fitChoice);
+  lastGroup = { g, parsed, s };
+
+  // Not enough time
+  if (g.needsChoice){
+    const est = c => planGroup(parsed.map(p => p.exercises), s, c).total;
+    html += `<div class="warn"><b>Not enough time for this plan in ${S.budgetMin} min.</b> Pick one:
+      <div class="opts">
+        <button data-fit="superset" class="${fitChoice === "superset" ? "on" : ""}">Superset accessories<small>Pair isolation moves back to back, rest once. About ${fmtMin(est("superset"))}.</small></button>
+        <button data-fit="drop" class="${fitChoice === "drop" ? "on" : ""}">Drop sets<small>Cut the last set of isolation moves from the bottom. About ${fmtMin(est("drop"))}.</small></button>
+        <button data-fit="anyway" class="${fitChoice === "anyway" ? "on" : ""}">Go anyway<small>Minimum rest everywhere. About ${fmtMin(est("anyway"))}.</small></button>
+      </div>
+      <p style="margin:10px 0 0">Short rest means your weights may dip a bit today. That's normal.</p></div>`;
+  }
+  if (g.early >= 60) html += `<div class="ok">Max rest everywhere. You'll finish about ${fmtMin(g.early)} early.</div>`;
+  if (g.needsChoice && fitChoice && g.total > g.budget + 60) html += `<div class="warn">Still about ${fmtMin(g.total - g.budget)} over with this option. Real finish shown below.</div>`;
+
+  const finishAt = new Date(Date.now() + g.total * 1000);
+  html += `<div class="finish">Finish ≈ ${finishAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} · ${fmtMin(g.total)}</div>`;
+  if (parsed.length > 1) html += `<div class="muted">Taking turns, one set each. Waiting for a partner counts as rest. ${g.sim.buffers > 0 ? `About ${fmtMin(g.sim.buffers)} of extra wait added where rest wasn't done yet.` : ""}</div>`;
+
+  parsed.forEach((p, pi) => {
+    const plan = g.plans[pi];
+    const hist = personHistory(p.name);
+    html += `<div class="pv-person"><h3>${esc(p.name)}${parsed.length > 1 ? ` <span class="muted">· done at ${fmtMin(g.sim.finish[pi])}</span>` : ""}</h3>`;
+    p.exercises.forEach((ex, i) => {
+      const st = plan.steps.filter(x => x.ex === i);
+      const setsNow = st.length ? st[0].sets : 0;
+      const rests = st.filter(x => x.gap === "rest").map(x => x.rest);
+      const supers = st.some(x => x.gap === "none") || st.some(x => x.pair != null);
+      const pairName = st.length && st[0].pair != null ? p.exercises[st[0].pair].name : "";
+      const uniq = [...new Set(rests)];
+      let restTxt = uniq.length ? `rest ${uniq.map(r => r + " s").join(" / ")}` : "";
+      if (supers) restTxt = `superset with ${esc(pairName)}` + (uniq.length ? `, then ${restTxt}` : "");
+      const amount = ex.hold ? `${ex.hold} s hold` : `${ex.reps} reps`;
+      const setsTxt = setsNow !== ex.sets ? `<s>${ex.sets}</s> ${setsNow}` : ex.sets;
+      const sug = suggestFor(hist, ex);
+      html += `<div class="pv-ex"><b>${esc(ex.name)}</b>
+        <span class="muted">${setsTxt} sets × ${amount} · ${fmtW(ex.weight)} · ${ex.type}${restTxt ? " · " + restTxt : ""}</span>
+        ${sug ? `<div class="sug">💡 ${esc(sug.text)} ${sug.apply ? `<button data-apply="${pi}:${i}">Use it</button>` : ""}</div>` : ""}
+      </div>`;
+    });
+    if (g.dropped[pi] && g.dropped[pi].length) html += `<div class="muted">Dropped: ${g.dropped[pi].map(esc).join(", ")}.</div>`;
+    html += `<div class="muted">Plus 1 min to move between exercises.</div></div>`;
+  });
+  pv.innerHTML = html;
+  $("startBtn").disabled = g.needsChoice && !fitChoice;
+  $("startBtn").textContent = g.needsChoice && !fitChoice ? "Pick an option above" : "Start workout";
+}
+
+$("preview").addEventListener("click", e => {
+  const f = e.target.closest("[data-fit]");
+  if (f){ fitChoice = f.dataset.fit; renderPreview(); return; }
+  const a = e.target.closest("[data-apply]");
+  if (a){
+    const [pi, i] = a.dataset.apply.split(":").map(Number);
+    const p = S.people[pi];
+    const parsed = parsePlan(p.plan);
+    const ex = parsed.exercises[i];
+    const sug = suggestFor(personHistory(personName(p, pi)), ex);
+    if (!sug || !sug.apply) return;
+    Object.assign(ex, sug.apply);
+    const lines = p.plan.split(/\r?\n/);
+    lines[ex.line] = formatLine(ex);
+    p.plan = lines.join("\n");
+    saveSettings(); renderPeople(); renderPreview();
+  }
+});
+
+/* =====================================================================
+   WORKOUT ENGINE
+   READY -> COUNTDOWN -> SET -> LOG -> REST -> (next turn) ... -> DONE
+   ===================================================================== */
+const W = { state: "IDLE", paused: false, pausedAt: 0, pausedTotal: 0, people: [], cur: 0, startAt: 0 };
+const now = () => (W.paused ? W.pausedAt : performance.now()) - W.pausedTotal;
+
+function cur(){ return W.people[W.cur]; }
+function curStep(){ const p = cur(); return p.steps[p.idx]; }
+function curEx(){ const p = cur(); return p.exs[curStep().ex]; }
+
+function startWorkout(){
+  if (!lastGroup) return;
+  ensureAudio();
+  // iPhone: speak on the tap so speech is allowed later
+  speak("Quack! Let's get to work.");
+  requestWake();
+  const { g, parsed } = lastGroup;
+  const plans = store.get("plans", {});
+  parsed.forEach((p, i) => { plans[p.name] = S.people[i].plan; });
+  store.set("plans", plans);
+  store.set("lastPlan", S.people[0].plan);
+
+  W.people = parsed.map((p, i) => ({
+    name: p.name, exs: p.exercises, steps: g.plans[i].steps, idx: 0,
+    readyAt: 0, lastEnd: null, lastRecord: null, done: false, finishedAt: 0,
+    sets: 0, volume: 0, prs: []
+  }));
+  W.cur = 0; W.paused = false; W.pausedTotal = 0;
+  W.startAt = now();
+  W.session = new Date().toISOString().slice(0, 10);
+  $("setup").hidden = true; $("done").hidden = true; $("workout").hidden = false;
+  window.scrollTo(0, 0);
+  enter("READY");
+}
+
+function enter(state, extra = {}){
+  W.state = state; W.t0 = now(); Object.assign(W, extra);
+  W.flags = {};
+  musicForState(state);
+  render();
+}
+
+function nextInfo(p){
+  const st = p.steps[p.idx], ex = p.exs[st.ex];
+  return `${ex.name}, set ${st.set} of ${st.sets}, ${ex.weight > 0 ? fmtW(ex.weight).replace("kg", "kilos") : "bodyweight"}`;
+}
+
+function startCountdown(lead = 0){ enter("COUNTDOWN", { lead }); }
+
+function startSet(){
+  const p = cur();
+  if (p.lastRecord && p.lastEnd != null){
+    p.lastRecord.restTaken = Math.round((now() - p.lastEnd) / 1000);
+    persistRecord(p.lastRecord);
+  }
+  enter("SET", { said: 0, holdSaid: {} });
+}
+
+function finishSet(done){
+  const p = cur(), ex = curEx();
+  const elapsed = now() - W.t0;
+  p.lastEnd = now();
+  if (ex.hold) done = done != null ? done : Math.min(ex.hold, Math.round(elapsed / 1000));
+  speak(line("setDone"));
+  enter("LOG", { logReps: done, logWeight: ex.weight });
+}
+
+function saveLog(){
+  if (W.state !== "LOG") return;
+  const p = cur(), st = curStep(), ex = curEx();
+  const rec = {
+    date: W.session, person: p.name, exercise: ex.name, setNumber: st.set,
+    targetReps: ex.hold || ex.reps, repsDone: W.logReps, weight: W.logWeight, restTaken: 0
+  };
+  const hist = personHistory(p.name);
+  const pr = isPR(hist, ex.name, rec.weight, rec.repsDone);
+  rec._id = Date.now() + Math.random();
+  const all = history(); (all[p.name] = all[p.name] || []).push(rec); store.set("history", all);
+  p.lastRecord = rec;
+  p.sets++; p.volume += rec.weight * (ex.hold ? 0 : rec.repsDone);
+  if (pr){ p.prs.push(`${ex.name} ${fmtW(rec.weight)} x ${rec.repsDone}`); }
+  p.readyAt = p.lastEnd + st.restAfter * 1000;
+  p.idx++;
+  if (p.idx >= p.steps.length){ p.done = true; p.finishedAt = p.lastEnd; }
+  nextTurn(pr ? line("pr", { exercise: ex.name }) + " " : "");
+}
+
+function persistRecord(rec){
+  const all = history();
+  const list = all[rec.person] || [];
+  const r = list.find(x => x._id === rec._id);
+  if (r){ r.restTaken = rec.restTaken; store.set("history", all); }
+}
+
+function nextTurn(prefix){
+  const n = W.people.length, prevI = W.cur, prev = W.people[prevI];
+  let q = -1;
+  for (let k = 1; k <= n; k++){ const c = (prevI + k) % n; if (!W.people[c].done){ q = c; break; } }
+  if (q < 0) return finishWorkout();
+  W.cur = q;
+  const next = W.people[q];
+  const wait = Math.max(0, next.readyAt - now());
+  let say = prefix || "";
+  if (prev.done && n > 1) say += `${prev.name}'s done. Legend. `;
+
+  if (q === prevI){
+    // solo (or the only one left)
+    if (wait < 4000){
+      say += `Straight into ${nextInfo(next)}.`;
+      speak(say.trim());
+      return startCountdown(2500);
+    }
+    say +=`${line("restStart")} Next: ${nextInfo(next)}.`;
+    speak(say.trim());
+    return enter("REST", { endAt: now() + wait, total: wait });
+  }
+  // partner handover
+  if (prev.done) say += `${next.name}, keep going. `;
+  else say += line("handover", { name: prev.name, nextName: next.name }) + " ";
+  const restMs = Math.max(wait, 6000);
+  if (wait > 6000) say += `${next.name}, ${Math.round(wait / 1000)} seconds, then you're up. `;
+  say += `${nextInfo(next)}.`;
+  speak(say.trim());
+  enter("REST", { endAt: now() + restMs, total: restMs });
+}
+
+function finishWorkout(){
+  enter("DONE");
+  speechSynthesis && speak(line("sessionDone"));
+  releaseWake(); musicPause();
+  const end = now();
+  $("summary").innerHTML = W.people.map(p => `
+    <div class="sum-person">
+      <h2>${esc(p.name)}</h2>
+      <div class="sum-grid">
+        <div><span class="muted">Sets</span><b>${p.sets}</b></div>
+        <div><span class="muted">Volume</span><b>${Math.round(p.volume).toLocaleString()} kg</b></div>
+        <div><span class="muted">Time</span><b>${fmtDur(((p.finishedAt || end) - W.startAt) / 1000)}</b></div>
+        <div><span class="muted">PRs</span><b class="pr">${p.prs.length}</b></div>
+      </div>
+      ${p.prs.length ? `<p class="pr">🏆 ${p.prs.map(esc).join("<br>🏆 ")}</p>` : ""}
+    </div>`).join("");
+  $("workout").hidden = true; $("done").hidden = false;
+  renderHistCount();
+  window.scrollTo(0, 0);
+}
+
+/* ---------- tick loop ---------- */
+function tick(){
+  if (W.paused || W.state === "IDLE" || W.state === "DONE") return;
+  const el = now() - W.t0;
+  const f = W.flags;
+
+  if (W.state === "COUNTDOWN"){
+    const t = el - (W.lead || 0);
+    for (let k = 0; k < 3; k++){
+      if (t >= k * 1000 && !f["c" + k]){ f["c" + k] = 1; beep(880); speak(String(3 - k)); render(); }
+    }
+    if (t >= 3000){ beep(1320, 0.25); speak("Go!"); startSet(); }
+    return;
+  }
+
+  if (W.state === "SET"){
+    const ex = curEx();
+    if (ex.hold){
+      const left = ex.hold - Math.floor(el / 1000);
+      if (!f.started){ f.started = 1; }
+      for (const mark of [30, 20, 10]){
+        if (ex.hold > mark + 4 && left <= mark && !f["h" + mark]){ f["h" + mark] = 1; speak(`${mark} seconds`); }
+      }
+      for (const k of [3, 2, 1]){
+        if (left <= k && !f["b" + k] && ex.hold > 4){ f["b" + k] = 1; beep(880); speak(String(k)); }
+      }
+      if (el >= ex.hold * 1000) return finishSet(ex.hold);
+      render();
+      return;
+    }
+    const N = ex.reps, tempoMs = S.tempo * 1000;
+    const due = Math.min(N, Math.floor(el / tempoMs));
+    while (W.said < due){ W.said++; sayRep(W.said, N); }
+    if (el >= N * tempoMs + Math.min(1500, tempoMs * 0.6)) return finishSet(N);
+    render();
+    return;
+  }
+
+  if (W.state === "LOG"){
+    if (el >= 10000) return saveLog();
+    render();
+    return;
+  }
+
+  if (W.state === "REST"){
+    const rem = W.endAt - now();
+    if (W.total >= 45000 && rem <= 30000 && rem > 12000 && !f.thirty){ f.thirty = 1; speak(line("thirty")); }
+    if (W.total > 13000 && rem <= 10000 && rem > 4000 && !f.ten){ f.ten = 1; speak(line("ten")); }
+    for (const k of [3, 2, 1]){
+      if (rem <= k * 1000 && !f["b" + k]){ f["b" + k] = 1; beep(880); }
+    }
+    if (rem <= 0){ beep(1320, 0.25); speak("Go!"); return startSet(); }
+    render();
+  }
+}
+
+function sayRep(k, N){
+  const maxWords = Math.max(2, Math.floor(S.tempo * 1.6));
+  let t;
+  if (k === N) t = `${shortLine("last", maxWords)} ${k}`;
+  else if (k === N - 1 && N > 1) t = `${k}, ${shortLine("push", maxWords)}`;
+  else if (N - k === 3) t = `${k}, ${shortLine("threeLeft", maxWords)}`;
+  else if (k === 1) t = `${shortLine("start", maxWords)} ${k}`;
+  else if (Math.random() < 1 / 3) t = `${shortLine("rep", maxWords)} ${k}`;
+  else t = String(k);
+  speak(t);
+}
+
+/* ---------- render ---------- */
+function render(){
+  if (W.state === "IDLE" || W.state === "DONE") return;
+  const p = cur(), st = curStep(), ex = curEx();
+  const multi = W.people.length > 1;
+  $("wWho").textContent = p.name;
+  $("wWho").hidden = !multi && p.name === "Me";
+  $("wEx").textContent = ex.name;
+  $("wMeta").textContent = `Set ${st.set} of ${st.sets} · ${fmtW(ex.weight)}${ex.hold ? ` · ${ex.hold} s hold` : ` · ${ex.reps} reps`}`;
+  const big = $("wBig"), sub = $("wSub"), stt = $("wState");
+  big.classList.remove("small");
+  $("wReady").hidden = W.state !== "READY";
+  $("wLog").hidden = W.state !== "LOG";
+  $("cSkip").disabled = W.state !== "REST";
+  $("cPlus").disabled = W.state !== "REST";
+  $("cEarly").disabled = W.state !== "SET";
+  const el = now() - W.t0;
+
+  if (W.state === "READY"){
+    big.textContent = "🦆"; sub.textContent = multi ? `${p.name}, you're up first.` : "Tap Start when you're set.";
+    stt.textContent = "Ready";
+  } else if (W.state === "COUNTDOWN"){
+    const t = el - (W.lead || 0);
+    big.textContent = t < 0 ? "…" : String(Math.max(1, 3 - Math.floor(t / 1000)));
+    sub.textContent = "Get set"; stt.textContent = "Countdown";
+  } else if (W.state === "SET"){
+    if (ex.hold){
+      const left = Math.max(0, ex.hold - Math.floor(el / 1000));
+      big.textContent = left; sub.textContent = "seconds left"; stt.textContent = "Hold";
+    } else {
+      big.textContent = W.said || "GO";
+      if (!W.said) big.classList.add("small");
+      const left = ex.reps - W.said;
+      sub.textContent = left > 0 ? `${left} rep${left === 1 ? "" : "s"} left` : "Done!";
+      stt.textContent = "Set";
+    }
+  } else if (W.state === "LOG"){
+    big.textContent = Math.max(0, Math.ceil(10 - el / 1000)); big.classList.add("small");
+    sub.textContent = "Check it, then save (auto-saves)";
+    stt.textContent = "Log";
+    $("repsLabel").textContent = ex.hold ? "Seconds held" : "Reps done";
+    $("logReps").textContent = W.logReps;
+    $("logWeight").textContent = W.logWeight > 0 ? +W.logWeight.toFixed(2) : "BW";
+  } else if (W.state === "REST"){
+    const rem = Math.max(0, W.endAt - now());
+    big.textContent = fmtDur(Math.ceil(rem / 1000)); big.classList.add("small");
+    sub.textContent = `Next: ${multi ? p.name + " · " : ""}${ex.name}, set ${st.set} of ${st.sets}`;
+    stt.textContent = multi ? "Rest / partner" : "Rest";
+  }
+}
+
+/* ---------- controls ---------- */
+$("startBtn").onclick = startWorkout;
+$("readyGo").onclick = () => { ensureAudio(); startCountdown(0); };
+$("saveLog").onclick = saveLog;
+function stepFor(){ return TYPES[curEx().type].jump; }
+$("repsMinus").onclick = () => { W.logReps = Math.max(0, W.logReps - 1); W.t0 = now(); render(); };
+$("repsPlus").onclick  = () => { W.logReps += 1; W.t0 = now(); render(); };
+$("wMinus").onclick = () => { W.logWeight = Math.max(0, +(W.logWeight - stepFor()).toFixed(2)); W.t0 = now(); render(); };
+$("wPlus").onclick  = () => { W.logWeight = +(W.logWeight + stepFor()).toFixed(2); W.t0 = now(); render(); };
+
+$("cPause").onclick = () => {
+  if (!W.paused){
+    W.paused = true; W.pausedAt = performance.now();
+    if ("speechSynthesis" in window) speechSynthesis.cancel();
+    musicPause();
+    $("cPause").textContent = "Resume"; $("pausedBanner").hidden = false;
+  } else {
+    W.pausedTotal += performance.now() - W.pausedAt; W.paused = false;
+    $("cPause").textContent = "Pause"; $("pausedBanner").hidden = true;
+    ensureAudio(); requestWake(); musicForState(W.state);
+  }
+};
+$("cSkip").onclick = () => {
+  if (W.state !== "REST") return;
+  W.endAt = Math.min(W.endAt, now() + 3000);
+  W.flags.thirty = W.flags.ten = 1;
+};
+$("cPlus").onclick = () => {
+  if (W.state !== "REST") return;
+  W.endAt += 30000; W.total += 30000;
+  const rem = W.endAt - now();
+  if (rem > 30000 && W.total >= 45000) W.flags.thirty = 0;
+  if (rem > 10000) W.flags.ten = 0;
+  W.flags.b1 = W.flags.b2 = W.flags.b3 = 0;
+  render();
+};
+$("cEarly").onclick = () => {
+  if (W.state !== "SET") return;
+  const ex = curEx();
+  finishSet(ex.hold ? Math.round((now() - W.t0) / 1000) : W.said);
+};
+$("cEnd").onclick = () => {
+  if (confirm("End the workout now? Saved sets stay saved.")) finishWorkout();
+};
+$("backBtn").onclick = () => { W.state = "IDLE"; $("done").hidden = true; $("setup").hidden = false; renderPreview(); };
+
+/* ---------- export ---------- */
+function exportCSV(){
+  const all = history();
+  const rows = [["date","person","exercise","setNumber","targetReps","repsDone","weight","restTaken"]];
+  Object.values(all).flat().forEach(r => rows.push([r.date, r.person, r.exercise, r.setNumber, r.targetReps, r.repsDone, r.weight, r.restTaken]));
+  const csv = rows.map(r => r.map(v => /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : v).join(",")).join("\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+  a.download = `gym-muse-history-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+}
+$("exportBtn").onclick = exportCSV;
+$("exportBtn2").onclick = exportCSV;
+function renderHistCount(){
+  const n = Object.values(history()).flat().length;
+  $("histCount").textContent = n ? `${n} sets saved on this phone.` : "No sets saved yet.";
+}
+
+/* ---------- music picker ---------- */
+$("addMusic").onclick = () => $("musicFiles").click();
+$("musicFiles").onchange = e => {
+  M.urls.forEach(u => URL.revokeObjectURL(u));
+  const files = [...e.target.files];
+  M.urls = files.map(f => URL.createObjectURL(f));
+  M.names = files.map(f => f.name);
+  M.i = 0; audioEl.removeAttribute("src");
+  $("musicList").textContent = files.length ? `🎵 ${files.length} song${files.length > 1 ? "s" : ""}: ${M.names.join(", ")}` : "No music added.";
+};
+
+/* ---------- init ---------- */
+$("coach").innerHTML = Object.values(PERSONALITIES).map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join("");
+$("coach").value = S.coach;
+$("coach").onchange = e => { S.coach = e.target.value; saveSettings(); };
+$("voice").onchange = e => { S.voiceName = e.target.value; saveSettings(); ensureAudio(); speak(line("start")); };
+if ("speechSynthesis" in window){ loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; }
+bindSeg("modeSeg", "mode", "mode");
+bindSeg("musicSeg", "music", "music");
+syncModeBoxes();
+bindNum("defaultRest", "defaultRest");
+bindNum("budgetMin", "budgetMin");
+bindRange("tempo", "tempo", v => `${v} s per rep`);
+bindRange("voiceVol", "voiceVol", v => `${Math.round(v * 100)}%`);
+bindRange("musicVol", "musicVol", v => `${Math.round(v * 100)}%`);
+renderPeople();
+renderPreview();
+renderHistCount();
+setInterval(tick, 50);
+</script>
+</body>
+</html>
