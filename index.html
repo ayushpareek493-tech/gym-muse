@@ -79,6 +79,8 @@ button:disabled{opacity:.4}
 .stepper span{flex:1;font-size:34px;font-weight:800;font-variant-numeric:tabular-nums}
 .stepper button{width:72px;height:64px;font-size:30px;font-weight:700}
 .stepper small{display:block;font-size:14px;color:var(--muted);font-weight:400}
+.stepper input{width:100%;background:transparent;border:0;border-bottom:2px dashed var(--line);border-radius:0;color:var(--text);font-size:34px;font-weight:800;text-align:center;padding:0 0 2px}
+.stepper input:focus{outline:none;border-bottom-color:var(--accent)}
 .log .primary{width:100%;font-size:22px;min-height:64px;margin-top:8px}
 .controls{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px 12px calc(12px + env(safe-area-inset-bottom));background:var(--card);border-top:1px solid var(--line)}
 .controls button{min-height:56px;font-weight:600}
@@ -183,7 +185,7 @@ button:disabled{opacity:.4}
       </div>
       <div class="stepper">
         <button id="wMinus">−</button>
-        <span><small>Weight (kg)</small><b id="logWeight"></b></span>
+        <span><small>Weight (kg), tap to type</small><input id="logWeight" type="number" inputmode="decimal" step="0.5" min="0" aria-label="Weight in kg"></span>
         <button id="wPlus">+</button>
       </div>
       <button class="primary" id="saveLog">Save</button>
@@ -285,6 +287,8 @@ function csvToPlan(text){
   }).join("\n");
 }
 
+function baseName(name){ return name.replace(/\s*\([^)]*\)\s*$/, "").trim().toLowerCase(); }
+
 function setDuration(ex, tempo){
   return ex.hold ? ex.hold + SETUP_S : ex.reps * tempo + SETUP_S;
 }
@@ -319,7 +323,8 @@ function buildSteps(exs, tempo, opt = {}){
   steps.forEach((s, j) => {
     const nx = steps[j+1];
     if (!nx) s.gap = "end";
-    s.transition = !!nx && nx.block !== s.block;
+    // "Press (heavy)" -> "Press (lowered)" stays at the same station: no move time
+    s.transition = !!nx && nx.block !== s.block && baseName(exs[nx.ex].name) !== baseName(exs[s.ex].name);
   });
   return steps;
 }
@@ -541,6 +546,27 @@ Incline Dumbbell Press, 3 x 10, 22.5kg
 Cable Fly, 3 x 12, 15kg
 Lateral Raise, 3 x 15, 8kg
 Tricep Pushdown, 3 x 12, 25kg`;
+const PLANS = {
+  push1: `# PUSH 1, shoulder focused. Warm up first (warm-up sets aren't counted).
+# Heavy set aims for 9 reps, lowered set (lighter weight) for 15. Hit those, go up next time.
+# Train to the last clean rep. Tap "Done early" when you can't do another.
+Seated Military Press Smith (heavy), 1 x 9, rest 150
+Seated Military Press Smith (lowered), 1 x 15, rest 120
+Upright Rows (heavy), 1 x 9, rest 150
+Upright Rows (lowered), 1 x 15, rest 150
+Upright Rows (rest pause), 1 x 15, rest 120
+Incline Dumbbell Press (heavy), 1 x 9, rest 150
+Incline Dumbbell Press (lowered), 1 x 15, rest 120
+Chest Press Flat (heavy), 1 x 9, rest 150
+Chest Press Flat (lowered), 1 x 15, rest 120
+Cable Flys Incline (heavy), 1 x 9, rest 150
+Cable Flys Incline (lowered), 1 x 15, rest 120
+Side Laterals Dumbbell (heavy), 1 x 9, rest 150
+Side Laterals Dumbbell (lowered), 1 x 15, rest 120
+Overhead Triceps One Hand (heavy), 1 x 9, rest 150
+Overhead Triceps One Hand (lowered), 1 x 15, rest 120
+Abs Crunches and Leg Lifts, 4 x 15, bw, rest 60`
+};
 
 const S = Object.assign({
   people: [{ name: "", plan: "" }],
@@ -699,6 +725,7 @@ function renderPeople(){
       <ul class="errs" data-errs></ul>
       <div class="row" style="margin-top:8px">
         <button data-a="sample">Load sample plan</button>
+        <button data-a="push1">Load Push 1</button>
         <button data-a="last">Load last plan</button>
         <button data-a="csv">Upload CSV</button>
       </div>
@@ -718,6 +745,11 @@ $("people").addEventListener("click", e => {
   const a = b.dataset.a;
   if (a === "remove"){ S.people.splice(i, 1); }
   if (a === "sample"){ p.plan = SAMPLE; }
+  if (PLANS[a]){
+    p.plan = PLANS[a];
+    // these plans carry their own rest per line
+    S.mode = "manual"; document.querySelectorAll("#modeSeg button").forEach(b => b.classList.toggle("on", b.dataset.mode === "manual")); syncModeBoxes();
+  }
   if (a === "last"){
     const plans = store.get("plans", {});
     const t = plans[personName(p, i)] || store.get("lastPlan", "");
@@ -919,7 +951,13 @@ function finishSet(done){
   p.lastEnd = now();
   if (ex.hold) done = done != null ? done : Math.min(ex.hold, Math.round(elapsed / 1000));
   speak(line("setDone"));
-  enter("LOG", { logReps: done, logWeight: ex.weight });
+  // No weight in the plan? Start from what this person used last time on this exercise.
+  let w = ex.weight;
+  if (!w){
+    const prev = personHistory(p.name).filter(r => r.exercise.toLowerCase() === ex.name.toLowerCase() && r.weight > 0);
+    if (prev.length) w = prev[prev.length - 1].weight;
+  }
+  enter("LOG", { logReps: done, logWeight: w });
 }
 
 function saveLog(){
@@ -1112,7 +1150,9 @@ function render(){
     stt.textContent = "Log";
     $("repsLabel").textContent = ex.hold ? "Seconds held" : "Reps done";
     $("logReps").textContent = W.logReps;
-    $("logWeight").textContent = W.logWeight > 0 ? +W.logWeight.toFixed(2) : "BW";
+    const wIn = $("logWeight");
+    if (document.activeElement !== wIn) wIn.value = W.logWeight > 0 ? +W.logWeight.toFixed(2) : "";
+    wIn.placeholder = "BW";
   } else if (W.state === "REST"){
     const rem = Math.max(0, W.endAt - now());
     big.textContent = fmtDur(Math.ceil(rem / 1000)); big.classList.add("small");
@@ -1130,6 +1170,9 @@ $("repsMinus").onclick = () => { W.logReps = Math.max(0, W.logReps - 1); W.t0 = 
 $("repsPlus").onclick  = () => { W.logReps += 1; W.t0 = now(); render(); };
 $("wMinus").onclick = () => { W.logWeight = Math.max(0, +(W.logWeight - stepFor()).toFixed(2)); W.t0 = now(); render(); };
 $("wPlus").onclick  = () => { W.logWeight = +(W.logWeight + stepFor()).toFixed(2); W.t0 = now(); render(); };
+$("logWeight").addEventListener("focus", () => { W.t0 = now(); });
+$("logWeight").addEventListener("input", e => { const v = parseFloat(e.target.value); W.logWeight = isNaN(v) ? 0 : Math.max(0, v); W.t0 = now(); });
+$("logWeight").addEventListener("keydown", e => { if (e.key === "Enter"){ e.target.blur(); saveLog(); } });
 
 $("cPause").onclick = () => {
   if (!W.paused){
